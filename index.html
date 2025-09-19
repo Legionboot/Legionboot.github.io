@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeoMind AI — Искусственный Интеллект нового поколения</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(120deg, #131313 0%, #1a237e 100%);
+            color: #fff;
+        }
+        header {
+            background: rgba(15, 23, 42, 0.88);
+            padding: 24px 0 16px 0;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        }
+        header h1 {
+            font-size: 2.5rem;
+            letter-spacing: 2px;
+            margin: 0;
+        }
+        nav {
+            margin-top: 12px;
+        }
+        nav a {
+            color: #90caf9;
+            text-decoration: none;
+            margin: 0 18px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        nav a:hover {
+            color: #ffd54f;
+        }
+        .hero {
+            max-width: 700px;
+            margin: 56px auto 0 auto;
+            padding: 32px 24px;
+            background: rgba(30, 33, 42, 0.9);
+            border-radius: 18px;
+            box-shadow: 0 8px 32px rgba(21, 21, 54, 0.18);
+            text-align: center;
+        }
+        .hero h2 {
+            font-size: 2rem;
+            margin-bottom: 12px;
+        }
+        .hero p {
+            font-size: 1.2rem;
+            margin-bottom: 22px;
+            color: #b0b8cb;
+        }
+        .cta-btn {
+            background: linear-gradient(90deg, #2196f3, #21cbf3);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 28px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(33,203,243,0.14);
+            transition: background 0.2s;
+        }
+        .cta-btn:hover {
+            background: linear-gradient(90deg, #21cbf3, #2196f3);
+        }
+        section {
+            max-width: 880px;
+            margin: 48px auto;
+            padding: 0 24px;
+        }
+        .features {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 24px;
+        }
+        .feature-card {
+            flex: 1 1 250px;
+            background: rgba(41, 47, 67, 0.88);
+            border-radius: 12px;
+            padding: 28px 20px;
+            min-width: 240px;
+            margin: 0 8px;
+            box-shadow: 0 4px 16px rgba(33, 203, 243, 0.08);
+            text-align: center;
+            transition: transform 0.15s;
+        }
+        .feature-card:hover {
+            transform: translateY(-6px) scale(1.03);
+            box-shadow: 0 8px 28px rgba(33, 203, 243, 0.18);
+        }
+        .feature-card h3 {
+            margin-top: 0;
+            color: #ffd54f;
+            font-size: 1.3rem;
+        }
+        footer {
+            text-align: center;
+            color: #b0b8cb;
+            padding: 32px 0 12px 0;
+            background: rgba(30, 33, 42, 0.80);
+            margin-top: 56px;
+            font-size: 0.95rem;
+        }
+        @media (max-width: 800px) {
+            .features {
+                flex-direction: column;
+                align-items: center;
+            }
+            .feature-card {
+                margin: 12px 0;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>NeoMind AI</h1>
+        <nav>
+            <a href="#about">О компании</a>
+            <a href="#features">Технологии</a>
+            <a href="#contact">Контакты</a>
+        </nav>
+    </header>
+
+    <div class="hero">
+        <h2>Искусственный Интеллект нового поколения</h2>
+        <p>NeoMind AI — вымышленная компания, создающая передовые решения на базе искусственного интеллекта для бизнеса, науки и общества. Наши технологии сравнимы с возможностями лидеров индустрии: ChatGPT, Deepseek, Gemini и других.</p>
+        <button class="cta-btn" onclick="showDemo()">Попробовать демо</button>
+    </div>
+
+    <section id="about">
+        <h2>О компании</h2>
+        <p>
+            NeoMind AI — команда специалистов-энтузиастов, посвятивших себя разработке мощных и этичных систем искусственного интеллекта. Мы разрабатываем собственные языковые модели, ассистентов, а также инструменты генерации, анализа и поиска информации.
+        </p>
+    </section>
+
+    <section id="features">
+        <h2>Основные технологии</h2>
+        <div class="features">
+            <div class="feature-card">
+                <h3>Языковые модели</h3>
+                <p>Многоязычные LLM для диалогов, генерации текстов и кода, анализа данных — в реальном времени и с высокой точностью.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Генерация изображений</h3>
+                <p>Модели синтеза и редактирования изображений: искусство, дизайн, инфографика для бизнеса и творчества.</p>
+            </div>
+            <div class="feature-card">
+                <h3>AI-ассистенты</h3>
+                <p>Виртуальные помощники для автоматизации задач, поддержки клиентов, разработки и обучения.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="contact">
+        <h2>Связаться с нами</h2>
+        <p>
+            По всем вопросам и предложениям пишите на <a href="mailto:info@neomind.ai" style="color:#90caf9;">info@neomind.ai</a>
+        </p>
+    </section>
+
+    <footer>
+        &copy; 2025 NeoMind AI. Все права защищены.<br>
+        Это вымышленная компания, созданная для демонстрации.
+    </footer>
+
+    <script>
+        function showDemo() {
+            alert("Демо-режим: наш ИИ поможет вам найти любую информацию или создать текст!\n\n(В реальном проекте здесь был бы интерактивный чат или демонстрация возможностей.)");
+        }
+    </script>
+</body>
+</html>

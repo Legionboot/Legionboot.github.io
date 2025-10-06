@@ -1,159 +1,157 @@
-// Отвечает за отрисовку элементов интерфейса и связывается с app.js.
-// При необходимости здесь можно подключить реальный шаблонизатор или UI-библиотеку.
+// UI-утилиты для рендера DOM-структур.
+// При необходимости можно заменить на шаблонизатор или React, сохранив эти функции как адаптер.
 
-const conversationListEl = document.getElementById('conversationList');
-const messageListEl = document.getElementById('messageList');
-const conversationTitleEl = document.getElementById('conversationTitle');
-const conversationSubtitleEl = document.getElementById('conversationSubtitle');
-const fileRepositoryEl = document.getElementById('fileRepository');
-const statusIndicatorEl = document.getElementById('statusIndicator');
+const gestureIcon = `
+  <svg viewBox="0 0 32 32" aria-hidden="true">
+    <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 26l6-7 3 3 5-6 7 10" />
+  </svg>
+`;
 
-let handlers = {
-  onSelectConversation: () => {},
-  onOpenConversationWindow: () => {},
-  onOpenRepoWindow: () => {},
-  onAvatarClick: () => {},
-};
+export function escapeHTML(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
 
-export function initUI(options = {}) {
-  handlers = { ...handlers, ...options };
-
-  conversationListEl.addEventListener('click', (event) => {
-    const target = event.target.closest('[data-conversation-id]');
-    if (target) {
-      const { conversationId } = target.dataset;
-      handlers.onSelectConversation?.(conversationId);
-    }
-  });
-
-  conversationListEl.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      const target = event.target.closest('[data-conversation-id]');
-      if (target) {
-        event.preventDefault();
-        handlers.onSelectConversation?.(target.dataset.conversationId);
-      }
-    }
-  });
-
-  document.getElementById('openChatWindowButton')?.addEventListener('click', () => {
-    handlers.onOpenConversationWindow?.();
-  });
-
-  document.getElementById('openRepoWindowButton')?.addEventListener('click', () => {
-    handlers.onOpenRepoWindow?.();
-  });
-
-  document.getElementById('avatarButton')?.addEventListener('click', () => {
-    handlers.onAvatarClick?.();
+function formatTime(timestamp) {
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
   });
 }
 
-function escapeHtml(text) {
-  return text.replace(/[&<>"']/g, (char) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  })[char]);
-}
-
-export function renderConversationList(conversations, activeId) {
-  if (!Array.isArray(conversations)) {
-    conversationListEl.innerHTML = '<p role="status">Нет бесед</p>';
-    return;
-  }
-  conversationListEl.innerHTML = conversations
-    .map((conv) => {
-      const unread = conv.unreadCount ? `<span class="badge" aria-hidden="true">${conv.unreadCount}</span>` : '';
+export function renderConversationList(container, conversations, activeId) {
+  container.innerHTML = conversations
+    .map((conversation) => {
+      const selected = conversation.id === activeId;
       return `
-        <article class="conversation-card" role="listitem" tabindex="0" data-conversation-id="${conv.id}" aria-selected="${conv.id === activeId}">
-          <div class="conversation-card__meta">
-            <h3 class="conversation-card__title">${escapeHtml(conv.title)}</h3>
-            <p class="conversation-card__preview">${escapeHtml(conv.subtitle || '')}</p>
+        <article class="list__item" role="listitem" data-id="${conversation.id}" aria-selected="${selected}">
+          <div>
+            <div class="list__item-title">${escapeHTML(conversation.title)}</div>
+            <div class="list__item-subtitle">${escapeHTML(conversation.subtitle || '')}</div>
           </div>
-          ${unread}
+          ${conversation.unreadCount > 0 ? `<span class="unread-badge" aria-label="${conversation.unreadCount} непрочитанных">${conversation.unreadCount}</span>` : ''}
         </article>
       `;
     })
     .join('');
 }
 
-export function renderConversationHeader(conversation) {
-  if (!conversation) {
-    conversationTitleEl.textContent = 'Выберите чат';
-    conversationSubtitleEl.textContent = 'История сообщений отобразится здесь';
-    return;
-  }
-  conversationTitleEl.textContent = conversation.title;
-  const participants = conversation.participants?.join(', ');
-  conversationSubtitleEl.textContent = participants
-    ? `Участники: ${participants}`
-    : conversation.subtitle || '';
-}
-
-export function renderMessages(messages, { smoothScroll = true } = {}) {
-  if (!messages || !messages.length) {
-    messageListEl.innerHTML = '<p role="status">Пока нет сообщений</p>';
-    return;
-  }
-
-  messageListEl.innerHTML = messages
-    .map((msg) => messageTemplate(msg))
+export function renderMessages(container, messages) {
+  container.innerHTML = messages
+    .map(
+      (message) => `
+        <div class="message ${message.outgoing ? 'message--outgoing' : ''}" data-id="${message.id}">
+          <div class="message__author">${escapeHTML(message.author)}</div>
+          <div class="message__body">${escapeHTML(message.body)}</div>
+          <div class="message__meta">${formatTime(message.createdAt)}</div>
+        </div>
+      `,
+    )
     .join('');
-
-  if (smoothScroll) {
-    scrollMessagesToBottom();
-  }
+  container.scrollTop = container.scrollHeight;
 }
 
-export function appendMessage(message) {
-  messageListEl.insertAdjacentHTML('beforeend', messageTemplate(message));
-  scrollMessagesToBottom();
-}
-
-function messageTemplate(message) {
-  const time = new Intl.DateTimeFormat('ru-RU', {
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(message.createdAt);
-  const classes = ['message'];
-  if (message.outgoing) classes.push('message--outgoing');
-  return `
-    <article class="${classes.join(' ')}" role="article">
-      <div class="message__avatar" aria-hidden="true"></div>
-      <div class="message__bubble">
-        <p>${escapeHtml(message.body)}</p>
-        <p class="message__meta">${escapeHtml(message.author || 'Вы')} · ${time}</p>
-      </div>
-    </article>
+export function renderFileRepository(container) {
+  const files = [
+    { name: 'Гайд по жестам.pdf', size: '1.4 MB', updated: 'Сегодня' },
+    { name: 'Concept-ios17.fig', size: '22 MB', updated: 'Вчера' },
+    { name: 'Material-you-variables.json', size: '6 KB', updated: '3 дня назад' },
+  ];
+  container.innerHTML = `
+    <div class="file-list" role="list">
+      ${files
+        .map(
+          (file) => `
+            <article class="file-card" role="listitem">
+              <div class="file-card__name">${escapeHTML(file.name)}</div>
+              <div class="file-card__meta">Размер: ${file.size} · Обновлено: ${file.updated}</div>
+            </article>
+          `,
+        )
+        .join('')}
+    </div>
+    <p class="gesture-hint" aria-hidden="true">${gestureIcon}Жест «pinch» масштабирует активное окно.</p>
   `;
 }
 
-function scrollMessagesToBottom() {
-  requestAnimationFrame(() => {
-    messageListEl.scrollTo({ top: messageListEl.scrollHeight, behavior: 'smooth' });
-  });
+export function renderProfile(container) {
+  container.innerHTML = `
+    <div class="card">
+      <h3>Профиль</h3>
+      <p>MonoFlow — экспериментальный клиент без сервера. Все данные остаются на вашем устройстве.</p>
+      <ul class="list" role="list">
+        <li class="list__item" role="listitem">
+          <span class="list__item-title">Режим</span>
+          <span class="list__item-subtitle">iOS / Material</span>
+        </li>
+        <li class="list__item" role="listitem">
+          <span class="list__item-title">Синхронизация</span>
+          <span class="list__item-subtitle">Локально (можно подключить WebSocket)</span>
+        </li>
+      </ul>
+    </div>
+  `;
 }
 
-export function updateFiles(files) {
-  if (!files || !files.length) {
-    fileRepositoryEl.innerHTML = '<p role="status">Файлы не найдены</p>';
-    return;
-  }
-  fileRepositoryEl.innerHTML = files
-    .map(
-      (file) => `
-        <article class="file-item" role="listitem">
-          <span class="file-item__name">${escapeHtml(file.name)}</span>
-          <span class="file-item__meta">${escapeHtml(file.meta)}</span>
-        </article>
-      `
-    )
-    .join('');
+export function renderSearch(container) {
+  container.innerHTML = `
+    <form class="card" id="searchForm">
+      <label for="searchInput" class="list__item-title">Поиск по сообщениям</label>
+      <input id="searchInput" name="search" type="search" placeholder="Введите запрос" class="search-input" aria-label="Поиск" />
+      <p class="list__item-subtitle">Совет: трипальный свайп влево/вправо переключает окна.</p>
+    </form>
+    <div id="searchResults" class="message-list" aria-live="polite"></div>
+  `;
 }
 
-export function updateStatus(text) {
-  statusIndicatorEl.textContent = text;
+export function renderSettings(container) {
+  container.innerHTML = `
+    <div class="card">
+      <h3>Настройки</h3>
+      <p>Здесь можно подключить реальные сервисы: push-уведомления, WebRTC-звонки, управление с клавиатуры.</p>
+      <div class="list" role="list">
+        <label class="list__item" role="listitem">
+          <div>
+            <div class="list__item-title">Вибрация</div>
+            <div class="list__item-subtitle">Использовать тактильную отдачу на мобильных</div>
+          </div>
+          <input type="checkbox" name="haptics" />
+        </label>
+        <label class="list__item" role="listitem">
+          <div>
+            <div class="list__item-title">Синхронизация окон</div>
+            <div class="list__item-subtitle">Сохранять позиции в localStorage</div>
+          </div>
+          <input type="checkbox" name="persist-windows" checked />
+        </label>
+      </div>
+    </div>
+  `;
 }
+
+export function renderImportExportModal(container, { initialJson = '' } = {}) {
+  container.innerHTML = `
+    <div class="card">
+      <h3>Импорт / Экспорт JSON</h3>
+      <p>Скопируйте содержимое localStorage или вставьте подготовленный JSON и нажмите «Импортировать».</p>
+      <textarea id="modalJsonArea" class="import-export__textarea" placeholder="Вставьте JSON">${escapeHTML(initialJson)}</textarea>
+      <div class="window__actions">
+        <button class="ghost-btn" type="button" data-action="export">Экспортировать</button>
+        <button class="primary-btn" type="button" data-action="import">Импортировать</button>
+      </div>
+    </div>
+  `;
+}
+
+export function renderComposerHint(container) {
+  container.innerHTML = `
+    <p class="list__item-subtitle">Enter — отправка · Shift+Enter — новая строка · Esc — закрыть активное окно.</p>
+  `;
+}
+
+// Можно расширить: добавить шаблоны для голосовых сообщений, вложений, live reactions.

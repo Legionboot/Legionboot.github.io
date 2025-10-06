@@ -1,332 +1,298 @@
-// Менеджер плавающих окон: создание, фокусировка, закрытие и привязка к сетке.
-// Для расширения: добавить снап к виртуальным рабочим столам или док-панель.
+// Менеджер окон: создание, фокусировка, закрытие, сохранение состояния.
+// Можно расширить — добавить управление через WebSocket, чтобы синхронизировать окна между устройствами.
 
-import { animateWindowIntro, animateWindowClose } from './animations.js';
 import { attachWindowGestures } from './gestures.js';
+import { animateWindowOpen, animateWindowFocus, animateWindowClose, animateWindowMinimize, animateWindowRestore } from './animations.js';
 
-const layer = document.getElementById('windowLayer');
-const SNAP_SIZE = 24;
-const STORAGE_KEY = 'local_messenger_windows_state_v1';
-let zIndexCursor = 100;
-const windows = new Map();
+const WINDOWS_STATE_KEY = 'local_messenger_windows_layout_v1';
+const windowsMap = new Map();
+let zCounter = 200;
 
-function readState() {
+function getLayer() {
+  const layer = document.getElementById('windowLayer');
+  if (!layer) {
+    throw new Error('Не найден слой окон (#windowLayer). Убедитесь, что index.html содержит нужный контейнер.');
+  }
+  return layer;
+}
+
+function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-    return JSON.parse(raw);
-  } catch (err) {
-    console.warn('Не удалось прочитать состояние окон', err);
+    const raw = localStorage.getItem(WINDOWS_STATE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (error) {
+    console.warn('Не удалось прочитать состояние окон', error);
     return {};
   }
 }
 
-const state = readState();
-
-function persistState() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch (err) {
-    console.warn('Не удалось сохранить состояние окон', err);
-  }
+function saveState(state) {
+  localStorage.setItem(WINDOWS_STATE_KEY, JSON.stringify(state));
 }
 
-function ensureLayerPointer() {
-  layer.style.pointerEvents = windows.size ? 'auto' : 'none';
-}
-
-function snap(value) {
-  return Math.round(value / SNAP_SIZE) * SNAP_SIZE;
-}
-
-function clampWindow(rect) {
-  const padding = 16;
-  const maxX = window.innerWidth - rect.width - padding;
-  const maxY = window.innerHeight - rect.height - padding;
-  return {
-    x: Math.max(padding, Math.min(rect.x, Math.max(padding, maxX))),
-    y: Math.max(padding, Math.min(rect.y, Math.max(padding, maxY))),
+function persistWindow(windowEl) {
+  const state = loadState();
+  state[windowEl.id] = {
+    x: parseFloat(windowEl.dataset.x) || 0,
+    y: parseFloat(windowEl.dataset.y) || 0,
+    width: windowEl.offsetWidth,
+    height: windowEl.offsetHeight,
+    slot: windowEl.dataset.slot || null,
+    state: windowEl.dataset.state || 'normal',
+    scale: parseFloat(windowEl.dataset.scale) || 1,
   };
+  saveState(state);
 }
 
-function applyPosition(el, { x, y }) {
-  el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+function removePersisted(id) {
+  const state = loadState();
+  delete state[id];
+  saveState(state);
 }
 
-function applySize(el, { w, h }) {
-  if (w) el.style.width = `${w}px`;
-  if (h) el.style.height = `${h}px`;
-}
-
-function withRaf(cb) {
-  let rafId = null;
-  return (...args) => {
-    if (rafId) return;
-    rafId = requestAnimationFrame(() => {
-      rafId = null;
-      cb(...args);
-    });
-  };
-}
-
-const moveWithRaf = withRaf((el, position) => applyPosition(el, position));
-const sizeWithRaf = withRaf((el, size) => applySize(el, size));
-
-export function createWindow({ id, title, contentHtml, x = 80, y = 80, w = 360, h = 320, modal = false }) {
-  if (!id) throw new Error('Не указан id окна');
-
-  if (windows.has(id)) {
-    focusWindow(id);
-    const existing = windows.get(id);
-    if (contentHtml) {
-      existing.body.innerHTML = contentHtml;
-    }
-    return existing;
+function snapToGrid(windowEl) {
+  const viewportWidth = window.innerWidth;
+  if (viewportWidth < 900 || windowEl.dataset.type === 'modal') {
+    windowEl.dataset.slot = '';
+    return;
   }
-
-  const el = document.createElement('section');
-  el.className = 'window';
-  el.dataset.id = id;
-  if (modal) {
-    el.classList.add('window--modal');
+  const rect = windowEl.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const segment = viewportWidth / 3;
+  const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap')) || 16;
+  const currentY = parseFloat(windowEl.dataset.y) || 120;
+  if (centerX < segment) {
+    windowEl.dataset.slot = 'left';
+    windowEl.style.width = '320px';
+    updatePosition(windowEl, gap, currentY);
+  } else if (centerX > segment * 2) {
+    windowEl.dataset.slot = 'right';
+    windowEl.style.width = '320px';
+    const x = viewportWidth - 320 - gap;
+    updatePosition(windowEl, x, currentY);
+  } else {
+    windowEl.dataset.slot = 'center';
+    const reserved = 320 * 2 + gap * 2;
+    const width = Math.max(420, viewportWidth - reserved);
+    windowEl.style.width = `${width}px`;
+    const x = (viewportWidth - width) / 2;
+    updatePosition(windowEl, x, currentY);
   }
+  windowEl.dataset.snapped = 'true';
+}
 
-  const header = document.createElement('header');
-  header.className = 'window__header';
-  header.innerHTML = `
-    <h3 class="window__title">${title ?? 'Окно'}</h3>
-    <div class="window__controls">
-      <button class="window__btn" data-action="minimize" aria-label="Свернуть">—</button>
-      <button class="window__btn" data-action="maximize" aria-label="Растянуть">▢</button>
-      <button class="window__btn" data-action="close" aria-label="Закрыть">×</button>
+function updatePosition(windowEl, x, y) {
+  const scale = parseFloat(windowEl.dataset.scale) || 1;
+  windowEl.dataset.x = String(x);
+  windowEl.dataset.y = String(y);
+  windowEl.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${scale})`;
+}
+
+function applyState(windowEl, state) {
+  if (!state) return;
+  let finalX = parseFloat(windowEl.dataset.x) || 0;
+  let finalY = parseFloat(windowEl.dataset.y) || 0;
+  if (typeof state.x === 'number' && typeof state.y === 'number') {
+    finalX = state.x;
+    finalY = state.y;
+  }
+  if (state.width) {
+    windowEl.style.width = `${state.width}px`;
+  }
+  if (state.height) {
+    windowEl.style.height = `${state.height}px`;
+  }
+  if (state.slot) {
+    windowEl.dataset.slot = state.slot;
+    windowEl.dataset.snapped = 'true';
+  }
+  if (state.state) {
+    windowEl.dataset.state = state.state;
+  }
+  if (state.scale) {
+    windowEl.dataset.scale = state.scale;
+  }
+  updatePosition(windowEl, finalX, finalY);
+}
+
+function buildWindowElement({ id, title, content, contentHtml, slot, x = 120, y = 140, w = 360, h = 420, modal = false }) {
+  const windowEl = document.createElement('section');
+  windowEl.className = 'window fade-in';
+  windowEl.id = id;
+  windowEl.setAttribute('role', modal ? 'dialog' : 'region');
+  windowEl.setAttribute('aria-label', title);
+  windowEl.dataset.type = modal ? 'modal' : 'window';
+  windowEl.dataset.state = 'normal';
+  windowEl.dataset.scale = '1';
+  if (slot) {
+    windowEl.dataset.slot = slot;
+  }
+  windowEl.style.width = `${w}px`;
+  windowEl.style.height = `${h}px`;
+  updatePosition(windowEl, x, y);
+
+  windowEl.innerHTML = `
+    <header class="window__titlebar" data-drag-handle>
+      <span class="window__title">${title}</span>
+      <div class="window__controls">
+        <button class="window__btn" data-action="minimize" aria-label="Свернуть">—</button>
+        <button class="window__btn" data-action="snap" aria-label="Прикрепить к сетке">▢</button>
+        <button class="window__btn" data-action="close" aria-label="Закрыть">×</button>
+      </div>
+    </header>
+    <div class="window__body">
+      <div class="window__content" data-window-content></div>
+      <div class="window__resize-handle" data-resize-handle></div>
     </div>
   `;
 
-  const body = document.createElement('div');
-  body.className = 'window__body';
-  body.innerHTML = contentHtml || '';
+  const contentTarget = windowEl.querySelector('[data-window-content]');
+  if (content instanceof HTMLElement) {
+    contentTarget.append(content);
+  } else if (typeof contentHtml === 'string') {
+    contentTarget.innerHTML = contentHtml;
+  }
 
-  const resizeHandle = document.createElement('div');
-  resizeHandle.className = 'window__resize-handle';
-  resizeHandle.innerHTML = '◢';
+  return windowEl;
+}
 
-  el.append(header, body, resizeHandle);
-  layer.appendChild(el);
+function handleControlClick(event) {
+  const button = event.target.closest('button');
+  if (!button) return;
+  const windowEl = event.currentTarget.closest('.window');
+  if (!windowEl) return;
+  const action = button.dataset.action;
+  if (action === 'close') {
+    closeWindow(windowEl.id);
+  } else if (action === 'minimize') {
+    if (windowEl.dataset.state === 'minimized') {
+      windowEl.dataset.state = 'normal';
+      animateWindowRestore(windowEl);
+    } else {
+      windowEl.dataset.state = 'minimized';
+      animateWindowMinimize(windowEl);
+    }
+    persistWindow(windowEl);
+  } else if (action === 'snap') {
+    snapToGrid(windowEl);
+    persistWindow(windowEl);
+  }
+}
 
-  const saved = state[id];
-  const rect = {
-    x: saved?.x ?? x,
-    y: saved?.y ?? y,
-    w: saved?.w ?? w,
-    h: saved?.h ?? h,
-  };
+export function createWindow(options) {
+  const existing = windowsMap.get(options.id);
+  if (existing) {
+    focusWindow(options.id);
+    return existing;
+  }
+  const layer = getLayer();
+  const state = loadState()[options.id];
+  const windowEl = buildWindowElement(options);
+  if (state) {
+    applyState(windowEl, state);
+  }
+  layer.append(windowEl);
+  windowsMap.set(options.id, windowEl);
+  focusWindow(options.id);
+  animateWindowOpen(windowEl);
 
-  applySize(el, rect);
-  applyPosition(el, clampWindow(rect));
+  windowEl.querySelector('.window__titlebar').addEventListener('pointerdown', () => focusWindow(windowEl.id));
+  windowEl.addEventListener('pointerdown', () => focusWindow(windowEl.id));
+  windowEl.addEventListener('click', handleControlClick);
 
-  const windowRecord = {
-    id,
-    element: el,
-    header,
-    body,
-    resizeHandle,
-    state: rect,
-    minimized: false,
-    modal,
-  };
-
-  windows.set(id, windowRecord);
-  focusWindow(id);
-  ensureLayerPointer();
-  animateWindowIntro(el);
-  window.dispatchEvent(new CustomEvent('window:opened', { detail: { id } }));
-  attachWindowGestures(el, {
-    onPinch: (scale) => {
-      const newWidth = Math.max(220, rect.w * scale);
-      const newHeight = Math.max(160, rect.h * scale);
-      rect.w = newWidth;
-      rect.h = newHeight;
-      sizeWithRaf(el, { w: newWidth, h: newHeight });
-      state[id] = { ...state[id], w: newWidth, h: newHeight };
-      persistState();
+  let pinchActive = false;
+  let pinchBaseScale = parseFloat(windowEl.dataset.scale) || 1;
+  attachWindowGestures(windowEl, {
+    onDrag: ({ x, y }) => {
+      delete windowEl.dataset.snapped;
+      updatePosition(windowEl, x, y);
     },
-    onRotate: (angle) => {
-      el.style.rotate = `${angle}deg`;
+    onDragEnd: () => {
+      snapToGrid(windowEl);
+      persistWindow(windowEl);
     },
-    onRotateEnd: () => {
-      el.style.rotate = '0deg';
+    onResize: ({ width, height }) => {
+      windowEl.style.width = `${width}px`;
+      windowEl.style.height = `${height}px`;
     },
-    onThreeFingerSwipe: (direction) => {
-      if (direction === 'down') {
-        minimizeWindow(id, true);
+    onResizeEnd: () => {
+      persistWindow(windowEl);
+    },
+    onPinch: ({ scale }) => {
+      if (!pinchActive) {
+        pinchActive = true;
+        pinchBaseScale = parseFloat(windowEl.dataset.scale) || 1;
       }
+      const clamped = Math.min(1.6, Math.max(0.7, pinchBaseScale * scale));
+      windowEl.dataset.scale = String(clamped);
+      updatePosition(windowEl, parseFloat(windowEl.dataset.x) || 0, parseFloat(windowEl.dataset.y) || 0);
+    },
+    onPinchEnd: () => {
+      pinchActive = false;
+      updatePosition(windowEl, parseFloat(windowEl.dataset.x) || 0, parseFloat(windowEl.dataset.y) || 0);
+      persistWindow(windowEl);
     },
     onLongPress: () => {
-      el.classList.toggle('window--modal');
+      windowEl.dataset.state = windowEl.dataset.state === 'minimized' ? 'normal' : 'minimized';
+      if (windowEl.dataset.state === 'minimized') {
+        animateWindowMinimize(windowEl);
+      } else {
+        animateWindowRestore(windowEl);
+      }
+      persistWindow(windowEl);
+    },
+    onThreeFingerSwipe: (direction) => {
+      window.dispatchEvent(new CustomEvent('window:swipe', { detail: { id: windowEl.id, direction } }));
     },
   });
 
-  header.addEventListener('pointerdown', (event) => startDrag(event, windowRecord));
-  resizeHandle.addEventListener('pointerdown', (event) => startResize(event, windowRecord));
-  header.addEventListener('dblclick', () => toggleMaximize(windowRecord));
-  header.addEventListener('mousedown', () => focusWindow(id));
+  persistWindow(windowEl);
 
-  header.querySelectorAll('.window__btn').forEach((btn) => {
-    btn.addEventListener('click', (event) => {
-      const action = event.currentTarget.dataset.action;
-      if (action === 'close') closeWindow(id);
-      if (action === 'minimize') minimizeWindow(id);
-      if (action === 'maximize') toggleMaximize(windowRecord);
-    });
-  });
-
-  return windowRecord;
-}
-
-function toggleMaximize(windowRecord) {
-  const { element, state: rect, id } = windowRecord;
-  const maximized = element.dataset.state === 'maximized';
-  if (maximized) {
-    element.dataset.state = '';
-    applySize(element, rect);
-    applyPosition(element, rect);
-  } else {
-    element.dataset.state = 'maximized';
-    element.style.width = `${window.innerWidth - 40}px`;
-    element.style.height = `${window.innerHeight - 60}px`;
-    applyPosition(element, { x: 20, y: 20 });
+  if (typeof options.onMount === 'function') {
+    options.onMount(windowEl);
   }
-  persistStateSnapshot(id, rect);
-}
 
-function minimizeWindow(id, silent = false) {
-  const record = windows.get(id);
-  if (!record) return;
-  const { element } = record;
-  const isMin = element.dataset.state === 'minimized';
-  element.dataset.state = isMin ? '' : 'minimized';
-  if (!silent) {
-    persistStateSnapshot(id, record.state);
-  }
-}
-
-function persistStateSnapshot(id, rect) {
-  state[id] = {
-    x: rect.x,
-    y: rect.y,
-    w: parseInt(rect.w, 10) || rect.w,
-    h: parseInt(rect.h, 10) || rect.h,
-  };
-  persistState();
-}
-
-function startDrag(event, record) {
-  event.preventDefault();
-  focusWindow(record.id);
-  const { element, state: rect } = record;
-  const pointerId = event.pointerId;
-  const start = { x: rect.x, y: rect.y };
-  const offset = { x: event.clientX - rect.x, y: event.clientY - rect.y };
-
-  const move = (moveEvent) => {
-    const next = {
-      x: moveEvent.clientX - offset.x,
-      y: moveEvent.clientY - offset.y,
-    };
-    const clamped = clampWindow({ ...rect, ...next });
-    rect.x = clamped.x;
-    rect.y = clamped.y;
-    moveWithRaf(element, rect);
-  };
-
-  const up = () => {
-    element.releasePointerCapture(pointerId);
-    element.removeEventListener('pointermove', move);
-    element.removeEventListener('pointerup', up);
-    element.removeEventListener('pointercancel', up);
-    rect.x = snap(rect.x);
-    rect.y = snap(rect.y);
-    applyPosition(element, rect);
-    persistStateSnapshot(record.id, rect);
-  };
-
-  element.setPointerCapture(pointerId);
-  element.addEventListener('pointermove', move);
-  element.addEventListener('pointerup', up);
-  element.addEventListener('pointercancel', up);
-}
-
-function startResize(event, record) {
-  event.preventDefault();
-  event.stopPropagation();
-  focusWindow(record.id);
-  const { element, state: rect } = record;
-  const pointerId = event.pointerId;
-  const startSize = { w: rect.w, h: rect.h };
-  const startPos = { x: event.clientX, y: event.clientY };
-
-  const move = (moveEvent) => {
-    const deltaX = moveEvent.clientX - startPos.x;
-    const deltaY = moveEvent.clientY - startPos.y;
-    rect.w = Math.max(220, startSize.w + deltaX);
-    rect.h = Math.max(160, startSize.h + deltaY);
-    sizeWithRaf(element, rect);
-  };
-
-  const up = () => {
-    element.releasePointerCapture(pointerId);
-    element.removeEventListener('pointermove', move);
-    element.removeEventListener('pointerup', up);
-    element.removeEventListener('pointercancel', up);
-    rect.w = snap(rect.w);
-    rect.h = snap(rect.h);
-    applySize(element, rect);
-    persistStateSnapshot(record.id, rect);
-  };
-
-  element.setPointerCapture(pointerId);
-  element.addEventListener('pointermove', move);
-  element.addEventListener('pointerup', up);
-  element.addEventListener('pointercancel', up);
+  return windowEl;
 }
 
 export function focusWindow(id) {
-  const record = windows.get(id);
-  if (!record) return;
-  zIndexCursor += 1;
-  record.element.style.zIndex = zIndexCursor;
-  windows.forEach((w) => w.element.classList.toggle('window--focused', w.id === id));
-  window.dispatchEvent(new CustomEvent('window:focused', { detail: { id } }));
+  const windowEl = windowsMap.get(id);
+  if (!windowEl) return;
+  windowsMap.forEach((win) => {
+    if (win === windowEl) {
+      win.dataset.focused = 'true';
+      win.style.zIndex = ++zCounter;
+    } else {
+      win.dataset.focused = 'false';
+    }
+  });
+  animateWindowFocus(windowEl);
 }
 
 export function closeWindow(id) {
-  const record = windows.get(id);
-  if (!record) return;
-  animateWindowClose(record.element, () => {
-    layer.removeChild(record.element);
-    windows.delete(id);
-    delete state[id];
-    persistState();
-    ensureLayerPointer();
-    window.dispatchEvent(new CustomEvent('window:closed', { detail: { id } }));
+  const windowEl = windowsMap.get(id);
+  if (!windowEl) return;
+  animateWindowClose(windowEl, () => {
+    windowEl.remove();
+    windowsMap.delete(id);
+    removePersisted(id);
   });
 }
 
-export function setWindowSize(id, w, h) {
-  const record = windows.get(id);
-  if (!record) return;
-  record.state.w = w;
-  record.state.h = h;
-  applySize(record.element, { w, h });
-  persistStateSnapshot(id, record.state);
+export function setWindowSize(id, width, height) {
+  const windowEl = windowsMap.get(id);
+  if (!windowEl) return;
+  windowEl.style.width = `${width}px`;
+  windowEl.style.height = `${height}px`;
+  persistWindow(windowEl);
 }
 
-window.addEventListener('resize', () => {
-  windows.forEach((record) => {
-    const clamped = clampWindow({ ...record.state });
-    record.state.x = clamped.x;
-    record.state.y = clamped.y;
-    applyPosition(record.element, clamped);
-  });
-  persistState();
-});
+export function persistState() {
+  windowsMap.forEach((windowEl) => persistWindow(windowEl));
+}
+
+export function listWindows() {
+  return Array.from(windowsMap.values());
+}
+
+// Возможное расширение: добавить док-панель для минимизированных окон.

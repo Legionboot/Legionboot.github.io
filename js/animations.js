@@ -1,70 +1,71 @@
-// Обёртки над AnimeJS для единообразных анимаций.
-// Для расширения: добавить анимации открытия вкладок или жестовых подсказок.
+// Обёртки над AnimeJS. Здесь можно добавлять новые анимации (например, bounce, physics).
 
-const FALLBACK = {
-  play: () => {},
-};
-
-function getAnime() {
-  return window.anime ?? {
-    timeline: () => FALLBACK,
-    spring: () => FALLBACK,
-    remove: () => {},
-    ({ targets }) => ({ targets }),
-  };
+function animate(element, params) {
+  if (typeof anime === 'undefined') {
+    console.warn('AnimeJS не загружен');
+    return { finished: Promise.resolve() };
+  }
+  return anime({ targets: element, ...params });
 }
 
-export function animateWindowIntro(element) {
-  const anime = getAnime();
-  anime({
-    targets: element,
-    duration: 320,
-    easing: 'easeOutCubic',
-    translateY: [24, 0],
+export function animateWindowOpen(windowEl) {
+  animate(windowEl, {
     opacity: [0, 1],
+    translateY: [-12, 0],
+    duration: 340,
+    easing: 'cubicBezier(0.22, 1, 0.36, 1)',
   });
 }
 
-export function animateWindowClose(element, onComplete) {
-  const anime = getAnime();
-  anime({
-    targets: element,
+export function animateWindowFocus(windowEl) {
+  animate(windowEl, {
+    boxShadow: ['0px 20px 40px rgba(0,0,0,0.35)', '0px 32px 64px rgba(0,230,118,0.45)'],
+    duration: 260,
+    easing: 'easeOutQuad',
+  });
+}
+
+export function animateWindowClose(windowEl, onComplete) {
+  animate(windowEl, {
+    opacity: [1, 0],
+    translateY: [0, 28],
     duration: 220,
     easing: 'easeInCubic',
-    opacity: [1, 0],
-    translateY: [0, 32],
     complete: onComplete,
   });
 }
 
-export function pulseAvatar(element) {
-  const anime = getAnime();
-  anime({
-    targets: element,
-    duration: 520,
-    direction: 'alternate',
-    easing: 'easeInOutCubic',
-    scale: [1, 1.08],
+export function animateWindowMinimize(windowEl) {
+  animate(windowEl, {
+    opacity: [1, 0.6],
+    duration: 180,
+    easing: 'easeInOutQuad',
   });
 }
 
-export function badgeFlash(element) {
-  const anime = getAnime();
-  anime({
-    targets: element,
-    duration: 380,
+export function animateWindowRestore(windowEl) {
+  animate(windowEl, {
+    opacity: [0.7, 1],
+    duration: 200,
     easing: 'easeOutQuad',
-    backgroundColor: ['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.12)'],
   });
 }
 
-export function toast(element) {
-  const anime = getAnime();
-  anime({
-    targets: element,
-    duration: 260,
-    easing: 'easeOutCubic',
-    translateY: [16, 0],
-    opacity: [0, 1],
+export function animateAvatarPulse(avatarEl) {
+  animate(avatarEl, {
+    scale: [1, 1.08, 1],
+    duration: 520,
+    easing: 'easeInOutSine',
   });
 }
+
+export function animateMessageSend(messageEl) {
+  animate(messageEl, {
+    translateY: [12, 0],
+    opacity: [0, 1],
+    duration: 260,
+    easing: 'easeOutQuad',
+  });
+}
+
+// В будущем можно добавить анимации для группового перемещения окон и демонстрации жестов.

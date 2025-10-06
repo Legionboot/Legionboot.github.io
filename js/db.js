@@ -1,180 +1,178 @@
-// Локальная "БД" на основе localStorage. Здесь можно подключить реальный API.
+// Локальная база данных на основе localStorage.
+// В этом модуле можно перейти на IndexedDB или реальный REST API, сохранив интерфейс функций.
+
 const STORAGE_KEY = 'local_messenger_db_v1';
 
-const seedData = () => ({
+const defaultData = {
   conversations: [
     {
-      id: 'design-team',
-      title: 'Дизайн-команда',
-      subtitle: 'Синхронизация по макетам',
+      id: 'team-design',
+      title: 'Команда дизайна',
+      subtitle: 'Визуальные апдейты для iOS 17',
       unreadCount: 2,
-      participants: ['Мария', 'Антон', 'Вы'],
+      participants: ['Вы', 'Алина', 'Макс'],
       lastMessageAt: Date.now() - 1000 * 60 * 3,
     },
     {
-      id: 'support',
-      title: 'Служба поддержки',
-      subtitle: 'Обратная связь клиентов',
+      id: 'infra-sync',
+      title: 'Infra Sync',
+      subtitle: 'Обновления инфраструктуры',
       unreadCount: 0,
-      participants: ['Тимур', 'Кира', 'Вы'],
+      participants: ['Вы', 'Павел', 'Света'],
       lastMessageAt: Date.now() - 1000 * 60 * 45,
     },
   ],
   messages: {
-    'design-team': [
+    'team-design': [
       {
         id: 'm1',
-        author: 'Мария',
-        body: 'Привет! Готовы к демонстрации iPhone-подобных карточек? 🎨',
+        author: 'Алина',
+        body: 'Привет! Новая версия макета готова, посмотри во вложении.',
         createdAt: Date.now() - 1000 * 60 * 60,
         outgoing: false,
       },
       {
         id: 'm2',
         author: 'Вы',
-        body: 'Да, я собираю прототип MonoFlow. Добавлю мультитач.',
-        createdAt: Date.now() - 1000 * 60 * 40,
+        body: 'Отлично! Отмечу пару комментариев и заапрувлю.',
+        createdAt: Date.now() - 1000 * 60 * 55,
         outgoing: true,
       },
       {
         id: 'm3',
-        author: 'Антон',
-        body: 'Супер! Проверь, чтобы окна снапились к сетке.',
-        createdAt: Date.now() - 1000 * 60 * 15,
+        author: 'Макс',
+        body: 'Добавил жест pinch для увеличения артбордов, проверьте.',
+        createdAt: Date.now() - 1000 * 60 * 45,
         outgoing: false,
       },
     ],
-    support: [
+    'infra-sync': [
       {
-        id: 's1',
-        author: 'Кира',
-        body: 'Поступила просьба добавить экспорт чатов.',
-        createdAt: Date.now() - 1000 * 60 * 90,
+        id: 'm4',
+        author: 'Павел',
+        body: 'Катим обновление серверов в 23:00, давайте протестим резервный кластер.',
+        createdAt: Date.now() - 1000 * 60 * 240,
         outgoing: false,
       },
       {
-        id: 's2',
+        id: 'm5',
         author: 'Вы',
-        body: 'Экспортируем локальную БД в JSON и рассылаем.',
-        createdAt: Date.now() - 1000 * 60 * 70,
+        body: 'Ок, я проверю скрипты для health-check и отпишусь.',
+        createdAt: Date.now() - 1000 * 60 * 180,
         outgoing: true,
+      },
+      {
+        id: 'm6',
+        author: 'Света',
+        body: 'Добавила отчёт в репозиторий файлов. См. раздел «Мониторинг».',
+        createdAt: Date.now() - 1000 * 60 * 120,
+        outgoing: false,
       },
     ],
   },
-});
+};
 
-function readDb() {
+function loadDb() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (typeof parsed !== 'object' || parsed === null) return null;
-    return parsed;
-  } catch (err) {
-    console.warn('Ошибка чтения localStorage', err);
+    return JSON.parse(raw);
+  } catch (error) {
+    console.warn('Не удалось прочитать localStorage, используем дефолтные данные', error);
     return null;
   }
 }
 
-function writeDb(db) {
+function persistDb(db) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+  return db;
+}
+
+function ensureDb(seed = false) {
+  let db = loadDb();
+  if (!db || seed) {
+    const clone = typeof structuredClone === 'function'
+      ? structuredClone(defaultData)
+      : JSON.parse(JSON.stringify(defaultData));
+    db = clone;
+    // При желании можно подтягивать данные с бэкенда:
+    // fetch('/api/conversations').then(...)
+    persistDb(db);
+  }
+  return db;
+}
+
+function nextMessageId(convId, messages) {
+  const index = messages.length + 1;
+  return `${convId}-${index}-${Date.now()}`;
 }
 
 export function init(seed = false) {
-  if (seed) {
-    const data = seedData();
-    writeDb(data);
-    return data;
-  }
-  let db = readDb();
-  if (!db) {
-    db = seedData();
-    writeDb(db);
-  }
-  return db;
-}
-
-function ensureDb() {
-  const db = readDb();
-  if (!db) {
-    return init(true);
-  }
-  return db;
+  return ensureDb(seed);
 }
 
 export function getConversations() {
   const db = ensureDb();
-  return db.conversations
-    .slice()
-    .sort((a, b) => b.lastMessageAt - a.lastMessageAt);
+  return [...db.conversations].sort((a, b) => b.lastMessageAt - a.lastMessageAt);
 }
 
-export function getConversation(id) {
+export function getConversation(convId) {
   const db = ensureDb();
-  return db.conversations.find((conv) => conv.id === id) || null;
+  return db.conversations.find((conv) => conv.id === convId) || null;
 }
 
-export function getMessages(convId, opts = {}) {
-  const { limit = 200, offset = 0 } = opts;
+export function getMessages(convId) {
   const db = ensureDb();
-  const all = db.messages[convId] || [];
-  return all.slice(Math.max(0, all.length - limit - offset), all.length - offset);
+  return db.messages[convId] ? [...db.messages[convId]] : [];
 }
 
 export function saveMessage(convId, message) {
   const db = ensureDb();
-  const list = db.messages[convId] || (db.messages[convId] = []);
-  const stored = {
-    id: `m-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    author: message.author || 'Вы',
-    body: message.body,
-    createdAt: message.createdAt || Date.now(),
-    outgoing: Boolean(message.outgoing),
-  };
-  list.push(stored);
-
-  const conv = db.conversations.find((c) => c.id === convId);
-  if (conv) {
-    conv.lastMessageAt = stored.createdAt;
-    if (!stored.outgoing) {
-      conv.unreadCount = (conv.unreadCount || 0) + 1;
-    }
+  if (!db.messages[convId]) {
+    db.messages[convId] = [];
   }
-
-  writeDb(db);
-  return stored;
+  const entry = {
+    id: nextMessageId(convId, db.messages[convId]),
+    author: message.author || 'Вы',
+    body: String(message.body || ''),
+    createdAt: message.createdAt || Date.now(),
+    outgoing: message.outgoing !== false,
+  };
+  db.messages[convId].push(entry);
+  const conversation = db.conversations.find((conv) => conv.id === convId);
+  if (conversation) {
+    conversation.lastMessageAt = entry.createdAt;
+    conversation.subtitle = entry.body.slice(0, 72);
+    conversation.unreadCount = 0;
+  }
+  persistDb(db);
+  return entry;
 }
 
 export function createConversation(meta) {
   const db = ensureDb();
-  const id = meta.id || `conv-${Date.now().toString(16)}`;
+  const id = meta?.id || `conv-${Date.now()}`;
   const conversation = {
     id,
-    title: meta.title || 'Новая беседа',
-    subtitle: meta.subtitle || 'Описание будет позже',
-    unreadCount: 0,
-    participants: meta.participants || ['Вы'],
-    lastMessageAt: Date.now(),
+    title: meta?.title || 'Новая беседа',
+    subtitle: meta?.subtitle || 'Пока нет сообщений',
+    unreadCount: meta?.unreadCount ?? 0,
+    participants: meta?.participants || ['Вы'],
+    lastMessageAt: meta?.lastMessageAt || Date.now(),
   };
-  db.conversations.push(conversation);
-  db.messages[id] = meta.messages || [];
-  writeDb(db);
+  db.conversations.unshift(conversation);
+  db.messages[id] = meta?.messages ? [...meta.messages] : [];
+  persistDb(db);
   return conversation;
 }
 
 export function markRead(convId) {
   const db = ensureDb();
-  const conv = db.conversations.find((c) => c.id === convId);
-  if (conv) {
-    conv.unreadCount = 0;
-    writeDb(db);
+  const conversation = db.conversations.find((conv) => conv.id === convId);
+  if (conversation) {
+    conversation.unreadCount = 0;
+    persistDb(db);
   }
-}
-
-export function resetDb() {
-  const data = seedData();
-  writeDb(data);
-  return data;
 }
 
 export function exportJson() {
@@ -188,13 +186,17 @@ export function importJson(json) {
     if (!parsed || typeof parsed !== 'object') {
       throw new Error('Некорректный JSON');
     }
-    if (!Array.isArray(parsed.conversations) || typeof parsed.messages !== 'object') {
-      throw new Error('Не хватает обязательных полей');
-    }
-    writeDb(parsed);
+    persistDb(parsed);
     return parsed;
-  } catch (err) {
-    console.error('Ошибка импорта JSON', err);
-    throw err;
+  } catch (error) {
+    console.error('Ошибка импорта JSON', error);
+    throw error;
   }
 }
+
+export function resetDb() {
+  localStorage.removeItem(STORAGE_KEY);
+  return ensureDb(true);
+}
+
+// Возможное расширение: добавить функции синхронизации через WebSocket/Service Worker.

@@ -2,36 +2,39 @@
 <html lang="ru" data-theme="ios">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <title>MonoFlow Messenger — концепт</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <title>MonoFlow Messenger — концепт многооконного мессенджера</title>
+  <link rel="icon" href="assets/app-icon.svg">
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/windows.css">
-  <link rel="icon" href="assets/app-icon.svg">
 </head>
 <body>
   <noscript>
-    <div class="noscript">Для работы приложения нужен JavaScript. Пожалуйста, включите его.</div>
+    <div class="noscript" role="alert">Для работы приложения нужен JavaScript. Пожалуйста, включите его.</div>
   </noscript>
 
   <div class="app-shell" id="appRoot" data-theme-style="ios">
     <header class="topbar" role="banner">
-      <div class="topbar__left">
-        <button class="ghost-btn" id="menuButton" aria-label="Меню и окна">
+      <div class="topbar__group">
+        <button class="ghost-btn" id="menuButton" aria-haspopup="true" aria-label="Меню и управление окнами">
           <span aria-hidden="true">☰</span>
         </button>
-        <h1 class="topbar__title">MonoFlow</h1>
+        <h1 class="topbar__title" id="appTitle">MonoFlow</h1>
       </div>
-      <div class="topbar__center" role="presentation">
-        <span class="status-indicator" aria-live="polite" id="statusIndicator">Всё локально</span>
+      <div class="topbar__group topbar__group--center" role="presentation">
+        <span class="status-indicator" id="statusIndicator" aria-live="polite">Оффлайн · локальное хранилище</span>
       </div>
-      <div class="topbar__right">
-        <button class="ghost-btn" id="themeToggle" aria-label="Переключить тему iOS / Material">
+      <div class="topbar__group">
+        <button class="ghost-btn" id="newChatButton" aria-label="Создать новый чат">＋</button>
+        <button class="ghost-btn" id="themeToggle" aria-pressed="false" aria-label="Переключить стиль iOS / Material">
           <span class="ghost-btn__label">iOS</span>
         </button>
+        <button class="ghost-btn" id="openSearchButton" aria-label="Открыть поиск (Ctrl/⌘+K)">
+          <span aria-hidden="true">⌘K</span>
+        </button>
         <button class="avatar" id="avatarButton" aria-label="Открыть профиль">
-          <!-- SVG-аватар в монохроме -->
           <svg viewBox="0 0 120 120" role="img" aria-labelledby="avatarTitle">
-            <title id="avatarTitle">Аватар пользователя</title>
+            <title id="avatarTitle">Монохромный аватар пользователя</title>
             <circle cx="60" cy="60" r="58" class="avatar__ring"></circle>
             <circle cx="60" cy="46" r="22" class="avatar__head"></circle>
             <path d="M24 98c10-20 28-30 36-30s26 10 36 30" class="avatar__body"></path>
@@ -40,55 +43,19 @@
       </div>
     </header>
 
-    <main class="workspace" role="main">
-      <section class="pane pane--list" aria-label="Список бесед">
-        <header class="pane__header">
-          <h2 class="pane__title">Чаты</h2>
-          <button class="ghost-btn" id="newChatButton" aria-label="Создать новую беседу">＋</button>
-        </header>
-        <div class="pane__content" id="conversationList" role="list" aria-live="polite"></div>
+    <main class="workspace" id="workspace" role="main">
+      <section class="workspace__grid" id="gridRoot" aria-label="Закреплённые панели">
+        <!-- Панели создаются динамически в app.js -->
       </section>
-
-      <section class="pane pane--messages" aria-label="Окно сообщений">
-        <header class="pane__header">
-          <div class="chat-meta">
-            <h2 class="pane__title" id="conversationTitle">Выберите чат</h2>
-            <p class="pane__subtitle" id="conversationSubtitle">История сообщений отобразится здесь</p>
-          </div>
-          <button class="ghost-btn" id="openChatWindowButton" aria-label="Открыть чат в отдельном окне">⤢</button>
-        </header>
-        <div class="pane__content pane__content--messages" id="messageList" role="log" aria-live="polite" aria-relevant="additions"></div>
-        <form class="composer" id="messageForm" autocomplete="off">
-          <label class="sr-only" for="messageInput">Введите сообщение</label>
-          <textarea id="messageInput" name="message" placeholder="Напишите сообщение…" rows="2" required></textarea>
-          <div class="composer__actions">
-            <button type="submit" class="primary-btn" id="sendButton" aria-label="Отправить сообщение">Отправить</button>
-          </div>
-        </form>
-      </section>
-
-      <aside class="pane pane--repo" aria-label="Репозиторий файлов и настройки">
-        <header class="pane__header">
-          <h2 class="pane__title">Файлы</h2>
-          <button class="ghost-btn" id="openRepoWindowButton" aria-label="Открыть репозиторий в окне">⤢</button>
-        </header>
-        <div class="pane__content" id="fileRepository" role="list"></div>
-        <section class="import-export" aria-labelledby="importExportTitle">
-          <h3 id="importExportTitle">Импорт / Экспорт БД</h3>
-          <div class="import-export__controls">
-            <button class="ghost-btn" id="exportDbButton">Экспорт JSON</button>
-            <button class="ghost-btn" id="importDbButton">Импорт JSON</button>
-            <button class="ghost-btn ghost-btn--danger" id="resetDbButton">Сброс БД</button>
-          </div>
-          <textarea id="dbJsonArea" class="import-export__textarea" placeholder="Вставьте сюда JSON и нажмите «Импорт»"></textarea>
-        </section>
-      </aside>
     </main>
 
-    <div id="windowLayer" class="window-layer" aria-live="polite"></div>
+    <div id="windowLayer" class="window-layer" aria-live="polite" aria-relevant="additions text"></div>
 
     <footer class="app-footer" role="contentinfo">
-      <small>Данные хранятся локально в <code>localStorage</code>. Папка <code>assets/</code> предназначена для иконок (например: <code>app-icon.svg</code>, <code>paperclip.svg</code>, <code>gesture-guide.png</code>).</small>
+      <small>
+        Данные сохраняются в <code>localStorage</code> под ключом <code>local_messenger_db_v1</code>. Папка <code>assets/</code> предназначена
+        для иконок и SVG (например: <code>app-icon.svg</code>, <code>avatar-default.svg</code>, <code>gesture-guide.svg</code>, <code>paperclip.svg</code>).
+      </small>
     </footer>
   </div>
 

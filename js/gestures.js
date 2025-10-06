@@ -1,173 +1,242 @@
-// Распознавание жестов на основе Pointer Events.
-// Для расширения: подключить gestures.js к другим компонентам (например, canvas или редактору).
+// Обработчик Pointer Events для окон: drag, resize, pinch, longpress, трипальные свайпы.
+// При желании можно подключить Hammer.js или Gestures API, но здесь всё реализовано вручную.
 
 const LONG_PRESS_DELAY = 550;
-const SWIPE_THRESHOLD = 80;
-const activeGestures = new WeakMap();
+const MOVE_THRESHOLD = 8;
 
-function getGestureState(element) {
-  if (!activeGestures.has(element)) {
-    activeGestures.set(element, {
-      pointers: new Map(),
-      pinchStartDistance: null,
-      rotationStartAngle: null,
-      lastScale: 1,
-      lastAngle: 0,
-      longPressTimer: null,
-      centroidStart: null,
-    });
-  }
-  return activeGestures.get(element);
+function distance(a, b) {
+  return Math.hypot(b.x - a.x, b.y - a.y);
 }
 
-export function attachWindowGestures(element, callbacks = {}) {
-  const state = getGestureState(element);
+function averageDelta(pointers) {
+  const entries = Array.from(pointers.values());
+  const base = entries[0];
+  const dx = entries.reduce((acc, pointer) => acc + (pointer.x - pointer.startX), 0) / entries.length;
+  const dy = entries.reduce((acc, pointer) => acc + (pointer.y - pointer.startY), 0) / entries.length;
+  return { dx, dy, base };
+}
 
-  const onPointerDown = (event) => {
-    element.setPointerCapture(event.pointerId);
-    state.pointers.set(event.pointerId, copyPointer(event));
-    if (state.pointers.size === 1) {
-      startLongPress(event, state, callbacks);
-    }
-    if (state.pointers.size >= 2) {
-      cancelLongPress(state);
-      initializePinch(state);
-      state.centroidStart = getCentroid(state.pointers);
+export function attachWindowGestures(windowEl, callbacks = {}) {
+  const dragHandle = windowEl.querySelector('[data-drag-handle]') || windowEl;
+  const resizeHandle = windowEl.querySelector('[data-resize-handle]');
+  const pointers = new Map();
+  let mode = null;
+  let longPressTimer = null;
+  let pinchInitialDistance = 0;
+  let pinchLastScale = 1;
+  let startWindowX = parseFloat(windowEl.dataset.x) || 0;
+  let startWindowY = parseFloat(windowEl.dataset.y) || 0;
+  let startWidth = windowEl.offsetWidth;
+  let startHeight = windowEl.offsetHeight;
+  let frameRequested = false;
+  let pendingDrag = null;
+  let pendingResize = null;
+  let pendingPinch = null;
+
+  const scheduleFrame = () => {
+    if (frameRequested) return;
+    frameRequested = true;
+    requestAnimationFrame(() => {
+      frameRequested = false;
+      if (pendingDrag) {
+        callbacks.onDrag?.(pendingDrag);
+        pendingDrag = null;
+      }
+      if (pendingResize) {
+        callbacks.onResize?.(pendingResize);
+        pendingResize = null;
+      }
+      if (pendingPinch) {
+        callbacks.onPinch?.(pendingPinch);
+        pendingPinch = null;
+      }
+    });
+  };
+
+  const clearLongPress = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
     }
   };
 
-  const onPointerMove = (event) => {
-    if (!state.pointers.has(event.pointerId)) return;
-    state.pointers.set(event.pointerId, copyPointer(event));
-    cancelLongPress(state);
-    if (state.pointers.size === 2) {
-      handlePinchRotate(element, state, callbacks);
+  const reset = () => {
+    const prevMode = mode;
+    pointers.clear();
+    clearLongPress();
+    mode = null;
+    pinchInitialDistance = 0;
+    pinchLastScale = 1;
+    if (prevMode === 'drag') callbacks.onDragEnd?.();
+    if (prevMode === 'resize') callbacks.onResizeEnd?.();
+    if (prevMode === 'pinch') callbacks.onPinchEnd?.();
+  };
+
+  const startLongPress = () => {
+    clearLongPress();
+    longPressTimer = setTimeout(() => {
+      callbacks.onLongPress?.();
+      clearLongPress();
+    }, LONG_PRESS_DELAY);
+  };
+
+  const onPointerDown = (event) => {
+    if (event.button > 0) return;
+    const target = event.target;
+    const isResize = resizeHandle && (target === resizeHandle || resizeHandle.contains(target));
+    const isDrag = !isResize && (dragHandle.contains(target) || target.closest('[data-drag-handle]'));
+    if (!isResize && !isDrag) return;
+
+    mode = isResize ? 'resize' : 'drag';
+    pointers.set(event.pointerId, {
+      id: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      x: event.clientX,
+      y: event.clientY,
+      type: event.pointerType,
+      startTime: event.timeStamp,
+    });
+
+    startWindowX = parseFloat(windowEl.dataset.x) || 0;
+    startWindowY = parseFloat(windowEl.dataset.y) || 0;
+    startWidth = windowEl.offsetWidth;
+    startHeight = windowEl.offsetHeight;
+
+    if (typeof windowEl.setPointerCapture === 'function') {
+      try {
+        windowEl.setPointerCapture(event.pointerId);
+      } catch (error) {
+        // ignore capture errors
+      }
     }
-    if (state.pointers.size === 3) {
-      handleThreeFingerSwipe(state, callbacks);
+    startLongPress();
+    event.preventDefault();
+  };
+
+  const onPointerMove = (event) => {
+    const pointer = pointers.get(event.pointerId);
+    if (!pointer) return;
+    pointer.x = event.clientX;
+    pointer.y = event.clientY;
+
+    const movedDistance = distance(pointer, { x: pointer.startX, y: pointer.startY });
+    if (movedDistance > MOVE_THRESHOLD) {
+      clearLongPress();
+    }
+
+    if (pointers.size === 1 && mode === 'drag') {
+      const dx = pointer.x - pointer.startX;
+      const dy = pointer.y - pointer.startY;
+      pendingDrag = { x: startWindowX + dx, y: startWindowY + dy };
+      scheduleFrame();
+    } else if (pointers.size === 1 && mode === 'resize') {
+      const dx = pointer.x - pointer.startX;
+      const dy = pointer.y - pointer.startY;
+      const width = Math.max(280, startWidth + dx);
+      const height = Math.max(220, startHeight + dy);
+      pendingResize = { width, height };
+      scheduleFrame();
+    } else if (pointers.size === 2) {
+      clearLongPress();
+      const [first, second] = Array.from(pointers.values());
+      if (!pinchInitialDistance) {
+        pinchInitialDistance = distance(first, second);
+      }
+      const dist = distance(first, second);
+      const scale = Math.min(Math.max(dist / pinchInitialDistance, 0.6), 1.6);
+      pinchLastScale = scale;
+      mode = 'pinch';
+      pendingPinch = { scale };
+      scheduleFrame();
     }
   };
 
   const onPointerUp = (event) => {
-    element.releasePointerCapture(event.pointerId);
-    state.pointers.delete(event.pointerId);
-    if (state.pointers.size < 2) {
-      finalizePinchRotate(element, state, callbacks);
+    const pointer = pointers.get(event.pointerId);
+    if (!pointer) return;
+    pointers.delete(event.pointerId);
+    clearLongPress();
+
+    if (typeof windowEl.releasePointerCapture === 'function') {
+      try {
+        windowEl.releasePointerCapture(event.pointerId);
+      } catch (error) {
+        // noop
+      }
     }
-    if (!state.pointers.size) {
-      cancelLongPress(state);
-      state.centroidStart = null;
+
+    if (mode === 'drag' && pointers.size === 0 && pendingDrag) {
+      callbacks.onDrag?.(pendingDrag);
+      callbacks.onDragEnd?.();
+      pendingDrag = null;
+    }
+
+    if (mode === 'resize' && pointers.size === 0 && pendingResize) {
+      callbacks.onResize?.(pendingResize);
+      callbacks.onResizeEnd?.();
+      pendingResize = null;
+    }
+
+    if (pointers.size === 0 && pinchLastScale !== 1) {
+      callbacks.onPinchEnd?.({ scale: pinchLastScale });
+    }
+
+    if (mode !== 'swipe3' && pointers.size === 0) {
+      const totalDuration = event.timeStamp - (pointer?.startTime || 0);
+      if (totalDuration < 220 && distance(pointer, { x: pointer.startX, y: pointer.startY }) < MOVE_THRESHOLD) {
+        // tap — ничего не делаем, окно уже в фокусе
+      }
+    }
+
+    if (pointers.size === 0) {
+      mode = null;
+      pinchInitialDistance = 0;
+      pinchLastScale = 1;
     }
   };
 
-  const onPointerCancel = onPointerUp;
-
-  element.addEventListener('pointerdown', onPointerDown, { passive: false });
-  element.addEventListener('pointermove', onPointerMove, { passive: false });
-  element.addEventListener('pointerup', onPointerUp);
-  element.addEventListener('pointercancel', onPointerCancel);
-
-  element.addEventListener('wheel', (event) => {
-    if (callbacks.onPinch) {
-      event.preventDefault();
-      const scaleDelta = event.deltaY < 0 ? 1.05 : 0.95;
-      callbacks.onPinch(scaleDelta);
+  const onPointerCancel = (event) => {
+    if (pointers.has(event.pointerId)) {
+      pointers.delete(event.pointerId);
     }
-  }, { passive: false });
-}
-
-function copyPointer(event) {
-  return {
-    id: event.pointerId,
-    clientX: event.clientX,
-    clientY: event.clientY,
-    timeStamp: event.timeStamp,
+    clearLongPress();
+    if (pointers.size === 0) {
+      reset();
+    }
   };
-}
 
-function startLongPress(event, state, callbacks) {
-  cancelLongPress(state);
-  state.longPressTimer = window.setTimeout(() => {
-    callbacks.onLongPress?.(event);
-  }, LONG_PRESS_DELAY);
-}
-
-function cancelLongPress(state) {
-  if (state.longPressTimer) {
-    clearTimeout(state.longPressTimer);
-    state.longPressTimer = null;
-  }
-}
-
-function initializePinch(state) {
-  const [a, b] = Array.from(state.pointers.values());
-  state.pinchStartDistance = distanceBetween(a, b);
-  state.rotationStartAngle = angleBetween(a, b);
-  state.lastScale = 1;
-  state.lastAngle = 0;
-}
-
-function handlePinchRotate(element, state, callbacks) {
-  const [a, b] = Array.from(state.pointers.values());
-  const distance = distanceBetween(a, b);
-  if (state.pinchStartDistance) {
-    const scale = distance / state.pinchStartDistance;
-    if (Math.abs(scale - state.lastScale) > 0.02) {
-      callbacks.onPinch?.(scale);
-      state.lastScale = scale;
-    }
-  }
-  const angle = angleBetween(a, b);
-  const deltaAngle = angle - (state.rotationStartAngle ?? angle);
-  if (Math.abs(deltaAngle - state.lastAngle) > 2) {
-    callbacks.onRotate?.(deltaAngle);
-    state.lastAngle = deltaAngle;
-  }
-}
-
-function finalizePinchRotate(element, state, callbacks) {
-  if (state.lastAngle && callbacks.onRotateEnd) {
-    callbacks.onRotateEnd(state.lastAngle);
-  }
-  state.pinchStartDistance = null;
-  state.rotationStartAngle = null;
-  state.lastScale = 1;
-  state.lastAngle = 0;
-}
-
-function handleThreeFingerSwipe(state, callbacks) {
-  const centroid = getCentroid(state.pointers);
-  if (!state.centroidStart) {
-    state.centroidStart = centroid;
-    return;
-  }
-  const deltaY = centroid.y - state.centroidStart.y;
-  const deltaX = centroid.x - state.centroidStart.x;
-  if (Math.abs(deltaY) > SWIPE_THRESHOLD || Math.abs(deltaX) > SWIPE_THRESHOLD) {
-    const direction = Math.abs(deltaY) > Math.abs(deltaX)
-      ? deltaY > 0 ? 'down' : 'up'
-      : deltaX > 0 ? 'right' : 'left';
+  const detectThreeFingerSwipe = (event) => {
+    if (pointers.size !== 3) return;
+    if (mode && mode !== 'swipe3') return;
+    mode = 'swipe3';
+    const { dx, dy } = averageDelta(pointers);
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+    if (absX < 60 && absY < 60) return;
+    const direction = absX > absY ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up';
     callbacks.onThreeFingerSwipe?.(direction);
-    state.centroidStart = centroid;
-  }
-}
+    reset();
+    event.preventDefault();
+  };
 
-function distanceBetween(a, b) {
-  return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-}
+  const listenTarget = windowEl;
+  const handlePointerMove = (event) => {
+    onPointerMove(event);
+    detectThreeFingerSwipe(event);
+  };
+  listenTarget.addEventListener('pointerdown', onPointerDown, { passive: false });
+  listenTarget.addEventListener('pointermove', handlePointerMove, { passive: false });
+  listenTarget.addEventListener('pointerup', onPointerUp, { passive: false });
+  listenTarget.addEventListener('pointercancel', onPointerCancel, { passive: false });
 
-function angleBetween(a, b) {
-  return (Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX) * 180) / Math.PI;
-}
-
-function getCentroid(pointers) {
-  const arr = Array.from(pointers.values());
-  const sum = arr.reduce((acc, p) => ({
-    x: acc.x + p.clientX,
-    y: acc.y + p.clientY,
-  }), { x: 0, y: 0 });
-  return {
-    x: sum.x / arr.length,
-    y: sum.y / arr.length,
+  // Public API — возвращаем функцию очистки
+  return () => {
+    listenTarget.removeEventListener('pointerdown', onPointerDown);
+    listenTarget.removeEventListener('pointermove', handlePointerMove);
+    listenTarget.removeEventListener('pointerup', onPointerUp);
+    listenTarget.removeEventListener('pointercancel', onPointerCancel);
   };
 }
+
+// Идея для будущего: вынести эти жесты в отдельный GestureController, чтобы переиспользовать в других приложениях.

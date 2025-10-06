@@ -1,182 +1,120 @@
-<!DOCTYPE html>  
-<html lang="ru">  
-<head>  
-<meta charset="utf-8">  
-<title>Минималистичный редактор</title>  
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">  
-<style>  
-:root {  
-  --bg: #111;  
-  --fg: #eee;  
-  --accent: #0077ff;  
-  --border: #222;  
-  --radius: .4rem;  
-  --tab-h: 50px;  
-  --fab: 52px;  
-  --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;  
-}  
-* { box-sizing:border-box; }  
-*:focus { outline: none !important; box-shadow:none !important; }  
-  
-body, html {  
-  height: 100%; margin: 0;  
-  font-family: var(--font);  
-  background: var(--bg);  
-  color: var(--fg);  
-  display: flex; flex-direction: column;  
-  overscroll-behavior: none;  
-}  
-.window { flex: 1; display: flex; }  
-textarea {  
-  flex: 1; border: none; outline: none;  
-  padding: 1rem;  
-  font-family: monospace;  
-  font-size: .9rem;  
-  background: var(--bg);  
-  color: var(--fg);  
-  resize: none;  
-  -webkit-user-modify: read-write-plaintext-only;  
-}  
-  
-.fab {  
-  position: fixed; bottom: 16px;  
-  width: var(--fab); height: var(--fab);  
-  border-radius: 50%;   
-  display: flex; align-items: center; justify-content: center;  
-  background: var(--accent);  
-  cursor: pointer;  
-  transition: background .2s, transform .1s;  
-  user-select: none;  
-  -webkit-tap-highlight-color: transparent;  
-}  
-.fab:active { transform: scale(0.92); }  
-.fab svg { width: 26px; height: 26px; fill: #fff; }  
-.fab:hover { background: #005ed1; }  
-#copyBtn { right: calc(16px + var(--fab) + 12px); background:#444; }  
-#pasteBtn { right: calc(16px + (var(--fab) + 12px) * 2); background:#444; }  
-#selectAllBtn { right: calc(16px + (var(--fab) + 12px) * 3); background:#444; }  
-#runBtn { right: 16px; }  
-  
-.topbar {  
-  height: var(--tab-h);  
-  display: flex; align-items: center; justify-content: center;  
-  background: #181818;  
-  border-bottom: 1px solid var(--border);  
-  font-size: .8rem;  
-  position: relative;  
-}  
-.topbar .title { color: var(--accent); font-weight: 600; }  
-#menuBtn {  
-  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);  
-  width: 36px; height: 36px; display:flex; align-items:center; justify-content:center;  
-  cursor: pointer;  
-  -webkit-tap-highlight-color: transparent;  
-}  
-#menuBtn svg { width: 26px; height: 26px; fill: var(--fg); }  
-  
-.notice {  
-  position: fixed; top: calc(var(--tab-h) + 10px); right: 20px;  
-  background: #222; color: #fff;  
-  padding: .5rem .8rem; border-radius: var(--radius);  
-  font-size: .8rem; opacity: 0; transition: opacity .3s, transform .3s;  
-  transform: translateY(-10px);  
-}  
-.notice.show { opacity: 1; transform: translateY(0); }  
-</style>  
-</head>  
-<body>  
-  
-<div class="topbar">  
-  <div id="menuBtn" title="Меню" role="button" tabindex="-1">  
-    <!-- иконка меню -->  
-    <svg viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg>  
-  </div>  
-  <div class="title">Редактор</div>  
-</div>  
-  
-<section id="codeWin" class="window">  
-  <textarea id="code" spellcheck="false"><!DOCTYPE html>  
-<html lang="ru">  
-<head>  
-  <meta charset="utf-8">  
-  <title>Demo</title>  
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">  
-  <style>  
-    body { margin: 2rem; font-family: system-ui; background:#111; color:#eee; }  
-    h1 { color:#0077ff; }  
-  </style>  
-</head>  
-<body>  
-  <h1>Привет, мир!</h1>  
-  <p>Это минималистичный предпросмотр.</p>  
-</body>  
-</html></textarea>  
-</section>  
-  
-<div class="fab" id="selectAllBtn" title="Выделить всё" role="button" tabindex="-1">  
-  <!-- иконка all -->  
-  <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4V4zm2 2v12h12V6H6z"/></svg>  
-</div>  
-  
-<div class="fab" id="pasteBtn" title="Вставить" role="button" tabindex="-1">  
-  <!-- иконка paste -->  
-  <svg viewBox="0 0 24 24"><path d="M19 2h-4.18A3 3 0 0012 0a3 3 0 00-2.82 2H5a2 2 0 00-2 2v16a2   
-  2 0 002 2h14a2 2 0 002-2V4a2 2 0 00-2-2zM12 2a1 1 0 110 2 1 1 0 010-2zM5   
-  20V4h2v3h10V4h2v16H5z"/></svg>  
-</div>  
-  
-<div class="fab" id="copyBtn" title="Копировать" role="button" tabindex="-1">  
-  <!-- иконка copy -->  
-  <svg viewBox="0 0 24 24"><path d="M16 1H4a2 2 0 00-2 2v14h2V3h12V1zm3 4H8a2 2 0 00-2 2v14a2 2 0   
-  002 2h11a2 2 0 002-2V7a2 2 0 00-2-2zm0 16H8V7h11v14z"/></svg>  
-</div>  
-  
-<div class="fab" id="runBtn" title="Запустить" role="button" tabindex="-1">  
-  <!-- иконка play -->  
-  <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>  
-</div>  
-  
-<div class="notice" id="notice"></div>  
-  
-<script>  
-const codeEl = document.getElementById('code');  
-const runBtn = document.getElementById('runBtn');  
-const copyBtn = document.getElementById('copyBtn');  
-const pasteBtn = document.getElementById('pasteBtn');  
-const selectAllBtn = document.getElementById('selectAllBtn');  
-const notice = document.getElementById('notice');  
-const menuBtn = document.getElementById('menuBtn');  
-  
-function showNotice(msg) {  
-  notice.textContent = msg;  
-  notice.classList.add('show');  
-  setTimeout(() => notice.classList.remove('show'), 1500);  
-}  
-  
-function runCode() {  
-  const blob = new Blob([codeEl.value], {type:'text/html'});  
-  window.open(URL.createObjectURL(blob), '_blank');  
-}  
-async function copyCode() {  
-  try { await navigator.clipboard.writeText(codeEl.value); showNotice("Скопировано"); }  
-  catch { showNotice("Ошибка копирования"); }  
-}  
-async function pasteCode() {  
-  try { codeEl.setRangeText(await navigator.clipboard.readText()); showNotice("Вставлено"); }  
-  catch { showNotice("Ошибка вставки"); }  
-}  
-function selectAllCode() {  
-  codeEl.setSelectionRange(0, codeEl.value.length);  
-  showNotice("Выделено");  
-}  
+<!DOCTYPE html>
+<html lang="ru" data-theme="ios">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Legion Messenger — монохромный SPA-мессенджер</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/windows.css" />
+    <link rel="icon" href="assets/app-icon.svg" />
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js" defer></script>
+    <script type="module" src="js/app.js" defer></script>
+  </head>
+  <body>
+    <div id="app" class="app-shell" aria-live="polite">
+      <header class="app-header" role="banner">
+        <button class="profile-btn" id="profileButton" aria-label="Профиль" tabindex="0">
+          <svg viewBox="0 0 64 64" role="img" aria-hidden="true">
+            <circle cx="32" cy="20" r="14" class="avatar-head"></circle>
+            <path d="M12 54c4-10 12-16 20-16s16 6 20 16" class="avatar-body"></path>
+          </svg>
+        </button>
+        <div class="brand">
+          <h1>Legion Messenger</h1>
+          <p class="brand-subtitle">Монохромный опыт будущего</p>
+        </div>
+        <div class="header-actions">
+          <button id="themeToggle" class="ghost-button" aria-label="Переключить стиль">iOS ⇆ Material</button>
+          <button id="openSearch" class="ghost-button" aria-label="Открыть поиск (Ctrl/Cmd+K)">
+            Поиск
+          </button>
+        </div>
+      </header>
 
-runBtn.addEventListener('click', runCode);  
-copyBtn.addEventListener('click', copyCode);  
-pasteBtn.addEventListener('click', pasteCode);  
-selectAllBtn.addEventListener('click', selectAllCode);  
-menuBtn.addEventListener('click', () => {  
-  showNotice("Открыть меню (потом добавим боковую панель)");  
-});  
-</script>  
-</body>  
+      <main class="workspace" role="main">
+        <section class="column conversations" aria-label="Список бесед">
+          <div class="column-header">
+            <h2>Диалоги</h2>
+            <button id="newConversation" class="ghost-button">Новая беседа</button>
+          </div>
+          <nav id="conversationList" role="list" class="conversation-list" aria-live="polite"></nav>
+        </section>
+
+        <section class="column messages" aria-label="Сообщения">
+          <header class="column-header">
+            <h2 id="conversationTitle">Выберите беседу</h2>
+            <div class="column-sub">
+              <span id="conversationStatus">—</span>
+            </div>
+          </header>
+          <div id="messageView" class="message-view" role="log" aria-live="polite"></div>
+          <form id="messageForm" class="message-form" autocomplete="off">
+            <label for="messageInput" class="sr-only">Введите сообщение</label>
+            <textarea
+              id="messageInput"
+              class="message-input"
+              rows="1"
+              placeholder="Введите сообщение… (Shift+Enter — новая строка)"
+              aria-label="Поле ввода сообщения"
+            ></textarea>
+            <button type="submit" class="primary-button" aria-label="Отправить сообщение">Отправить</button>
+          </form>
+        </section>
+
+        <aside class="column repo" aria-label="Репозиторий файлов">
+          <header class="column-header">
+            <h2>Репозиторий</h2>
+            <button id="openRepoWindow" class="ghost-button">Открыть окно</button>
+          </header>
+          <div id="repoList" class="repo-list" role="list"></div>
+          <div class="db-tools">
+            <h3>Импорт / Экспорт</h3>
+            <textarea id="dbJson" rows="4" placeholder="JSON базы данных"></textarea>
+            <div class="db-buttons">
+              <button id="exportDb" class="ghost-button">Экспортировать</button>
+              <button id="importDb" class="ghost-button">Импортировать</button>
+              <button id="resetDb" class="ghost-button">Сбросить</button>
+            </div>
+          </div>
+        </aside>
+      </main>
+
+      <section id="windowsLayer" class="windows-layer" aria-label="Плавающие окна"></section>
+    </div>
+
+    <template id="conversationItemTemplate">
+      <button class="conversation-item" role="listitem">
+        <span class="conversation-name"></span>
+        <span class="conversation-meta">
+          <span class="conversation-time"></span>
+          <span class="conversation-unread" aria-hidden="true"></span>
+        </span>
+      </button>
+    </template>
+
+    <template id="messageBubbleTemplate">
+      <article class="message-bubble" role="article">
+        <header class="message-meta">
+          <span class="message-author"></span>
+          <time class="message-time"></time>
+        </header>
+        <p class="message-text"></p>
+      </article>
+    </template>
+
+    <template id="repoItemTemplate">
+      <div class="repo-item" role="listitem">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <rect x="6" y="4" width="20" height="24" rx="4" ry="4"></rect>
+          <line x1="10" y1="12" x2="22" y2="12"></line>
+          <line x1="10" y1="18" x2="22" y2="18"></line>
+          <line x1="10" y1="24" x2="22" y2="24"></line>
+        </svg>
+        <div>
+          <p class="repo-name"></p>
+          <p class="repo-sub"></p>
+        </div>
+      </div>
+    </template>
+  </body>
 </html>

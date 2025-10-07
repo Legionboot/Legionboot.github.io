@@ -1,182 +1,566 @@
-<!DOCTYPE html>  
-<html lang="ru">  
-<head>  
-<meta charset="utf-8">  
-<title>Минималистичный редактор</title>  
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">  
-<style>  
-:root {  
-  --bg: #111;  
-  --fg: #eee;  
-  --accent: #0077ff;  
-  --border: #222;  
-  --radius: .4rem;  
-  --tab-h: 50px;  
-  --fab: 52px;  
-  --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;  
-}  
-* { box-sizing:border-box; }  
-*:focus { outline: none !important; box-shadow:none !important; }  
-  
-body, html {  
-  height: 100%; margin: 0;  
-  font-family: var(--font);  
-  background: var(--bg);  
-  color: var(--fg);  
-  display: flex; flex-direction: column;  
-  overscroll-behavior: none;  
-}  
-.window { flex: 1; display: flex; }  
-textarea {  
-  flex: 1; border: none; outline: none;  
-  padding: 1rem;  
-  font-family: monospace;  
-  font-size: .9rem;  
-  background: var(--bg);  
-  color: var(--fg);  
-  resize: none;  
-  -webkit-user-modify: read-write-plaintext-only;  
-}  
-  
-.fab {  
-  position: fixed; bottom: 16px;  
-  width: var(--fab); height: var(--fab);  
-  border-radius: 50%;   
-  display: flex; align-items: center; justify-content: center;  
-  background: var(--accent);  
-  cursor: pointer;  
-  transition: background .2s, transform .1s;  
-  user-select: none;  
-  -webkit-tap-highlight-color: transparent;  
-}  
-.fab:active { transform: scale(0.92); }  
-.fab svg { width: 26px; height: 26px; fill: #fff; }  
-.fab:hover { background: #005ed1; }  
-#copyBtn { right: calc(16px + var(--fab) + 12px); background:#444; }  
-#pasteBtn { right: calc(16px + (var(--fab) + 12px) * 2); background:#444; }  
-#selectAllBtn { right: calc(16px + (var(--fab) + 12px) * 3); background:#444; }  
-#runBtn { right: 16px; }  
-  
-.topbar {  
-  height: var(--tab-h);  
-  display: flex; align-items: center; justify-content: center;  
-  background: #181818;  
-  border-bottom: 1px solid var(--border);  
-  font-size: .8rem;  
-  position: relative;  
-}  
-.topbar .title { color: var(--accent); font-weight: 600; }  
-#menuBtn {  
-  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);  
-  width: 36px; height: 36px; display:flex; align-items:center; justify-content:center;  
-  cursor: pointer;  
-  -webkit-tap-highlight-color: transparent;  
-}  
-#menuBtn svg { width: 26px; height: 26px; fill: var(--fg); }  
-  
-.notice {  
-  position: fixed; top: calc(var(--tab-h) + 10px); right: 20px;  
-  background: #222; color: #fff;  
-  padding: .5rem .8rem; border-radius: var(--radius);  
-  font-size: .8rem; opacity: 0; transition: opacity .3s, transform .3s;  
-  transform: translateY(-10px);  
-}  
-.notice.show { opacity: 1; transform: translateY(0); }  
-</style>  
-</head>  
-<body>  
-  
-<div class="topbar">  
-  <div id="menuBtn" title="Меню" role="button" tabindex="-1">  
-    <!-- иконка меню -->  
-    <svg viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg>  
-  </div>  
-  <div class="title">Редактор</div>  
-</div>  
-  
-<section id="codeWin" class="window">  
-  <textarea id="code" spellcheck="false"><!DOCTYPE html>  
-<html lang="ru">  
-<head>  
-  <meta charset="utf-8">  
-  <title>Demo</title>  
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">  
-  <style>  
-    body { margin: 2rem; font-family: system-ui; background:#111; color:#eee; }  
-    h1 { color:#0077ff; }  
-  </style>  
-</head>  
-<body>  
-  <h1>Привет, мир!</h1>  
-  <p>Это минималистичный предпросмотр.</p>  
-</body>  
-</html></textarea>  
-</section>  
-  
-<div class="fab" id="selectAllBtn" title="Выделить всё" role="button" tabindex="-1">  
-  <!-- иконка all -->  
-  <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4V4zm2 2v12h12V6H6z"/></svg>  
-</div>  
-  
-<div class="fab" id="pasteBtn" title="Вставить" role="button" tabindex="-1">  
-  <!-- иконка paste -->  
-  <svg viewBox="0 0 24 24"><path d="M19 2h-4.18A3 3 0 0012 0a3 3 0 00-2.82 2H5a2 2 0 00-2 2v16a2   
-  2 0 002 2h14a2 2 0 002-2V4a2 2 0 00-2-2zM12 2a1 1 0 110 2 1 1 0 010-2zM5   
-  20V4h2v3h10V4h2v16H5z"/></svg>  
-</div>  
-  
-<div class="fab" id="copyBtn" title="Копировать" role="button" tabindex="-1">  
-  <!-- иконка copy -->  
-  <svg viewBox="0 0 24 24"><path d="M16 1H4a2 2 0 00-2 2v14h2V3h12V1zm3 4H8a2 2 0 00-2 2v14a2 2 0   
-  002 2h11a2 2 0 002-2V7a2 2 0 00-2-2zm0 16H8V7h11v14z"/></svg>  
-</div>  
-  
-<div class="fab" id="runBtn" title="Запустить" role="button" tabindex="-1">  
-  <!-- иконка play -->  
-  <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>  
-</div>  
-  
-<div class="notice" id="notice"></div>  
-  
-<script>  
-const codeEl = document.getElementById('code');  
-const runBtn = document.getElementById('runBtn');  
-const copyBtn = document.getElementById('copyBtn');  
-const pasteBtn = document.getElementById('pasteBtn');  
-const selectAllBtn = document.getElementById('selectAllBtn');  
-const notice = document.getElementById('notice');  
-const menuBtn = document.getElementById('menuBtn');  
-  
-function showNotice(msg) {  
-  notice.textContent = msg;  
-  notice.classList.add('show');  
-  setTimeout(() => notice.classList.remove('show'), 1500);  
-}  
-  
-function runCode() {  
-  const blob = new Blob([codeEl.value], {type:'text/html'});  
-  window.open(URL.createObjectURL(blob), '_blank');  
-}  
-async function copyCode() {  
-  try { await navigator.clipboard.writeText(codeEl.value); showNotice("Скопировано"); }  
-  catch { showNotice("Ошибка копирования"); }  
-}  
-async function pasteCode() {  
-  try { codeEl.setRangeText(await navigator.clipboard.readText()); showNotice("Вставлено"); }  
-  catch { showNotice("Ошибка вставки"); }  
-}  
-function selectAllCode() {  
-  codeEl.setSelectionRange(0, codeEl.value.length);  
-  showNotice("Выделено");  
-}  
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Monochrome Messenger Engine</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #050505;
+      --surface: rgba(18, 18, 18, 0.85);
+      --surface-strong: rgba(34, 34, 34, 0.92);
+      --border: #1a1a1a;
+      --text: #f0f0f0;
+      --muted: #7a7a7a;
+      --accent: #cfcfcf;
+      --radius: 18px;
+      --font: "SF Pro Display", "Roboto", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      --max-width: 420px;
+      --safe-top: env(safe-area-inset-top);
+      --safe-bottom: env(safe-area-inset-bottom);
+      --shadow: 0 24px 60px rgba(0,0,0,0.55);
+    }
 
-runBtn.addEventListener('click', runCode);  
-copyBtn.addEventListener('click', copyCode);  
-pasteBtn.addEventListener('click', pasteCode);  
-selectAllBtn.addEventListener('click', selectAllCode);  
-menuBtn.addEventListener('click', () => {  
-  showNotice("Открыть меню (потом добавим боковую панель)");  
-});  
-</script>  
-</body>  
+    * { box-sizing: border-box; outline: none !important; }
+    *::selection { background: rgba(255,255,255,0.08); color: var(--text); }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: var(--bg);
+      font-family: var(--font);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      overscroll-behavior: none;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    canvas#ambient {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+      filter: blur(60px) saturate(0);
+    }
+
+    .app-shell {
+      position: relative;
+      z-index: 1;
+      width: min(100%, var(--max-width));
+      margin: 0 auto;
+      height: min(100vh, 812px);
+      border-radius: 36px;
+      background: linear-gradient(160deg, rgba(18,18,18,0.9) 0%, rgba(10,10,10,0.95) 100%);
+      border: 1px solid rgba(255,255,255,0.04);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      padding: calc(var(--safe-top, 12px) + 6px) 16px calc(var(--safe-bottom, 12px) + 16px);
+      backdrop-filter: blur(18px) saturate(160%);
+      overflow: hidden;
+    }
+
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .status-bar svg {
+      height: 14px;
+      width: 14px;
+      fill: var(--muted);
+    }
+
+    .chat-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      background: var(--surface);
+      border-radius: 26px;
+      border: 1px solid rgba(255,255,255,0.03);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+
+    .contact-avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 16px;
+      background: linear-gradient(145deg, rgba(255,255,255,0.15), rgba(0,0,0,0.6));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .contact-avatar svg {
+      width: 28px;
+      height: 28px;
+      fill: var(--accent);
+    }
+
+    .contact-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .contact-name {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: 0.02em;
+    }
+
+    .contact-status {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .icon-button {
+      width: 38px;
+      height: 38px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.04);
+      background: rgba(255,255,255,0.02);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.18s ease, background 0.18s ease;
+    }
+
+    .icon-button:active {
+      transform: scale(0.94);
+    }
+
+    .icon-button svg {
+      width: 20px;
+      height: 20px;
+      fill: var(--accent);
+    }
+
+    .chat-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 18px 4px;
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+
+    .chat-body::-webkit-scrollbar { display: none; }
+
+    .timeline {
+      align-self: center;
+      padding: 6px 12px;
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      background: rgba(255,255,255,0.03);
+      border-radius: 999px;
+      color: var(--muted);
+      border: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .message {
+      max-width: 82%;
+      padding: 12px 14px;
+      border-radius: 20px;
+      font-size: 0.95rem;
+      line-height: 1.4;
+      position: relative;
+      word-wrap: break-word;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .message.outgoing {
+      align-self: flex-end;
+      background: var(--surface-strong);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+    }
+
+    .message.incoming {
+      align-self: flex-start;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
+    }
+
+    .message .meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .message .meta svg {
+      width: 16px;
+      height: 16px;
+      fill: var(--muted);
+    }
+
+    .typing-indicator {
+      width: 70px;
+      height: 32px;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.04);
+      padding: 0 12px;
+      align-self: flex-start;
+    }
+
+    .typing-indicator span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      animation: pulse 1.2s infinite ease-in-out;
+    }
+
+    .typing-indicator span:nth-child(2) { animation-delay: 0.15s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.3s; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; transform: translateY(0); }
+      50% { opacity: 1; transform: translateY(-2px); }
+    }
+
+    .composer {
+      display: flex;
+      align-items: flex-end;
+      gap: 12px;
+      margin-top: 4px;
+      padding: 14px 16px;
+      border-radius: 28px;
+      background: var(--surface);
+      border: 1px solid rgba(255,255,255,0.04);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+
+    .composer textarea {
+      flex: 1;
+      resize: none;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 0.95rem;
+      line-height: 1.5;
+      max-height: 120px;
+      padding: 0;
+      margin: 0;
+      font-family: inherit;
+      outline: none;
+      scrollbar-width: none;
+    }
+
+    .composer textarea::-webkit-scrollbar { display: none; }
+
+    .composer .send {
+      width: 46px;
+      height: 46px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.18s ease, background 0.18s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .composer .send:active { transform: scale(0.95); }
+
+    .composer .send svg {
+      width: 22px;
+      height: 22px;
+      fill: var(--bg);
+    }
+
+    .toast {
+      position: absolute;
+      left: 50%;
+      bottom: calc(18px + var(--safe-bottom, 10px));
+      transform: translate(-50%, 80px);
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 24px;
+      padding: 12px 20px;
+      font-size: 0.8rem;
+      letter-spacing: 0.08em;
+      color: var(--text);
+      backdrop-filter: blur(12px) saturate(160%);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    @media (max-width: 460px) {
+      body { padding: 16px; }
+      .app-shell { border-radius: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="ambient"></canvas>
+  <div class="app-shell">
+    <div class="status-bar">
+      <span id="statusTime">09:41</span>
+      <div class="status-icons">
+        <svg viewBox="0 0 24 24"><path d="M4 7h16v10H4z" fill="none"/><path d="M20 7H4v10h16V7zm-2 8H6V9h12v6zM5 5h14V3H5v2z"/></svg>
+      </div>
+    </div>
+
+    <header class="chat-header">
+      <div class="contact-avatar">
+        <svg viewBox="0 0 24 24"><path d="M12 2a6 6 0 016 6 6 6 0 01-6 6 6 6 0 01-6-6 6 6 0 016-6zm0 14c4.42 0 8 2.24 8 5v1H4v-1c0-2.76 3.58-5 8-5z"/></svg>
+      </div>
+      <div class="contact-info">
+        <span class="contact-name">Набор протоколов</span>
+        <span class="contact-status">Подключен • шифрование GitHub SSH</span>
+      </div>
+      <div class="header-actions">
+        <div class="icon-button" id="searchBtn" title="Поиск">
+          <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6 6 0 10-.71.71l.27.28v.79l5 5 1.5-1.5-5-5zm-5.5 0a4 4 0 110-8 4 4 0 010 8z"/></svg>
+        </div>
+        <div class="icon-button" id="callBtn" title="Звонок">
+          <svg viewBox="0 0 24 24"><path d="M6.54 5a13.333 13.333 0 006.93 6.93l2.31-2.31a1 1 0 011.04-.24 11.57 11.57 0 003.62.58 1 1 0 011 1V18a1 1 0 01-1 1A16.5 16.5 0 013 2a1 1 0 011-1h4.75a1 1 0 011 1 11.57 11.57 0 00.58 3.62 1 1 0 01-.24 1.04L6.54 5z"/></svg>
+        </div>
+      </div>
+    </header>
+
+    <div class="chat-body" id="chatBody" role="log" aria-live="polite">
+      <span class="timeline">сегодня</span>
+      <article class="message incoming" data-id="m1">
+        <p>Добро пожаловать в тестовый узел. Сообщения шифруются и воспроизводятся в реальном времени.</p>
+        <div class="meta"><span>08:58</span><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1010 10A10 10 0 0012 2zm1 11h-2V7h2zm0 4h-2v-2h2z"/></svg></div>
+      </article>
+      <article class="message outgoing" data-id="m2">
+        <p>Я запускаю имитацию клиента. Данные синхронизированы с облаком.</p>
+        <div class="meta"><span>09:12</span><svg viewBox="0 0 24 24"><path d="M21 7l-9 10-5-5 1.41-1.42L12 14.17 19.59 6.6z"/></svg></div>
+      </article>
+      <article class="message incoming" data-id="m3">
+        <p>Подтверждаю соединение. Используйте команду /sync для проверки состояния.</p>
+        <div class="meta"><span>09:15</span><svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 018 8h2l-3 4-3-4h2a6 6 0 10-6 6 5.93 5.93 0 003.9-1.44l1.45 1.44A7.94 7.94 0 0112 20a8 8 0 010-16z"/></svg></div>
+      </article>
+      <div class="typing-indicator" id="typingIndicator" hidden>
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+
+    <form class="composer" id="composer" autocomplete="off">
+      <textarea id="composerInput" rows="1" placeholder="Отправить защищённый сигнал…" aria-label="Введите сообщение"></textarea>
+      <button class="send" id="sendBtn" type="submit" title="Отправить">
+        <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+      </button>
+    </form>
+    <div class="toast" id="toast" role="status" aria-live="assertive"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js" integrity="sha384-ArNjA4VPS36FJOLwObAun1vDLteA94ppIqhzyapMI2vlA38nSxrdbidKdvUSsfx8" crossorigin="anonymous"></script>
+  <script>
+    const statusTime = document.getElementById('statusTime');
+    const chatBody = document.getElementById('chatBody');
+    const composer = document.getElementById('composer');
+    const composerInput = document.getElementById('composerInput');
+    const typingIndicator = document.getElementById('typingIndicator');
+    const toast = document.getElementById('toast');
+    const ambient = document.getElementById('ambient');
+    const ctx = ambient.getContext('2d');
+
+    function updateClock() {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      statusTime.textContent = `${h}:${m}`;
+    }
+    updateClock();
+    setInterval(updateClock, 30000);
+
+    function resizeCanvas() {
+      ambient.width = window.innerWidth * 2;
+      ambient.height = window.innerHeight * 2;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas, { passive: true });
+
+    const gradientNodes = Array.from({ length: 5 }).map((_, i) => ({
+      x: Math.random(),
+      y: Math.random(),
+      r: 120 + Math.random() * 120,
+      dx: (Math.random() - 0.5) * 0.0012,
+      dy: (Math.random() - 0.5) * 0.0012,
+      alpha: 0.12 + i * 0.03
+    }));
+
+    function renderGradient() {
+      ctx.clearRect(0, 0, ambient.width, ambient.height);
+      gradientNodes.forEach(node => {
+        node.x += node.dx;
+        node.y += node.dy;
+        if (node.x < 0 || node.x > 1) node.dx *= -1;
+        if (node.y < 0 || node.y > 1) node.dy *= -1;
+        const gx = node.x * ambient.width;
+        const gy = node.y * ambient.height;
+        const gradient = ctx.createRadialGradient(gx, gy, node.r * 0.25, gx, gy, node.r);
+        gradient.addColorStop(0, `rgba(255,255,255,${node.alpha})`);
+        gradient.addColorStop(1, 'rgba(10,10,10,0)');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(gx, gy, node.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      requestAnimationFrame(renderGradient);
+    }
+    renderGradient();
+
+    function showToast(message) {
+      toast.textContent = message;
+      anime.remove(toast);
+      anime({
+        targets: toast,
+        opacity: [0, 1],
+        translateY: [80, 0],
+        duration: 420,
+        easing: 'easeOutCubic'
+      }).finished.then(() => {
+        return new Promise(resolve => setTimeout(resolve, 1200));
+      }).then(() => {
+        anime({
+          targets: toast,
+          opacity: [1, 0],
+          translateY: [0, 80],
+          duration: 360,
+          easing: 'easeInCubic'
+        });
+      });
+    }
+
+    function scrollToBottom() {
+      chatBody.scrollTo({ top: chatBody.scrollHeight, behavior: 'smooth' });
+    }
+
+    function createMessage(text, role) {
+      const article = document.createElement('article');
+      article.className = `message ${role}`;
+      const content = document.createElement('p');
+      content.textContent = text;
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      const now = new Date();
+      const time = document.createElement('span');
+      time.textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      icon.setAttribute('viewBox', '0 0 24 24');
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', role === 'outgoing' ? 'M21 7l-9 10-5-5 1.41-1.42L12 14.17 19.59 6.6z' : 'M12 2a10 10 0 1010 10A10 10 0 0012 2zm1 11h-2V7h2zm0 4h-2v-2h2z');
+      icon.appendChild(path);
+      meta.appendChild(time);
+      meta.appendChild(icon);
+      article.appendChild(content);
+      article.appendChild(meta);
+      return article;
+    }
+
+    function animateMessage(element) {
+      element.style.opacity = 0;
+      anime({
+        targets: element,
+        opacity: [0, 1],
+        translateY: [18, 0],
+        duration: 420,
+        easing: 'easeOutQuad'
+      });
+    }
+
+    function simulateIncoming() {
+      typingIndicator.hidden = false;
+      anime({ targets: typingIndicator, opacity: [0, 1], duration: 240, easing: 'linear' });
+      const replies = [
+        'Сеанс подтверждён. Логирование событий отключено.',
+        'Режим без обновлений активен. Запросы идут через Motion Channel.',
+        'Статус: online. Используйте /export для выгрузки переписки.',
+        'Шум подавлен. Канал готов к синхронизации commit-пакетов.'
+      ];
+      const reply = replies[Math.floor(Math.random() * replies.length)];
+      setTimeout(() => {
+        typingIndicator.hidden = true;
+        const message = createMessage(reply, 'incoming');
+        chatBody.appendChild(message);
+        animateMessage(message);
+        scrollToBottom();
+      }, 1100 + Math.random() * 900);
+    }
+
+    composer.addEventListener('submit', event => {
+      event.preventDefault();
+      const text = composerInput.value.trim();
+      if (!text) {
+        showToast('Пустые сигналы не отправляются');
+        return;
+      }
+      const message = createMessage(text, 'outgoing');
+      chatBody.appendChild(message);
+      composerInput.value = '';
+      composerInput.style.height = 'auto';
+      animateMessage(message);
+      scrollToBottom();
+      simulateIncoming();
+    });
+
+    composerInput.addEventListener('input', () => {
+      composerInput.style.height = 'auto';
+      composerInput.style.height = composerInput.scrollHeight + 'px';
+    });
+
+    function blockRefresh(event) {
+      if ((event.key === 'r' && (event.metaKey || event.ctrlKey)) || event.key === 'F5') {
+        event.preventDefault();
+        showToast('Обновление отключено');
+      }
+    }
+    window.addEventListener('keydown', blockRefresh, { passive: false });
+    window.addEventListener('beforeunload', event => {
+      event.preventDefault();
+      event.returnValue = '';
+    });
+
+    showToast('Мессенджер готов к передаче');
+    scrollToBottom();
+  </script>
+</body>
 </html>

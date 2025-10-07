@@ -7,23 +7,30 @@
   <style>
     :root {
       color-scheme: dark;
-      --bg: #050505;
-      --surface: rgba(18, 18, 18, 0.85);
-      --surface-strong: rgba(34, 34, 34, 0.92);
-      --border: #1a1a1a;
-      --text: #f0f0f0;
-      --muted: #7a7a7a;
-      --accent: #cfcfcf;
-      --radius: 18px;
+      --bg: #020202;
+      --surface: rgba(10, 10, 10, 0.82);
+      --surface-strong: rgba(28, 28, 28, 0.92);
+      --border: rgba(255, 255, 255, 0.05);
+      --text: #f3f3f3;
+      --muted: #7f7f7f;
+      --accent: #dcdcdc;
+      --radius: 20px;
       --font: "SF Pro Display", "Roboto", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
       --max-width: 420px;
       --safe-top: env(safe-area-inset-top);
       --safe-bottom: env(safe-area-inset-bottom);
-      --shadow: 0 24px 60px rgba(0,0,0,0.55);
+      --shadow: 0 30px 70px rgba(0, 0, 0, 0.65);
     }
 
-    * { box-sizing: border-box; outline: none !important; }
-    *::selection { background: rgba(255,255,255,0.08); color: var(--text); }
+    * {
+      box-sizing: border-box;
+      outline: none !important;
+    }
+
+    *::selection {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+    }
 
     html, body {
       margin: 0;
@@ -41,15 +48,38 @@
       align-items: center;
       justify-content: center;
       position: relative;
+      padding: clamp(12px, 4vw, 24px);
     }
 
-    canvas#ambient {
+    canvas#ambient,
+    canvas#grain {
       position: fixed;
       inset: 0;
       width: 100vw;
       height: 100vh;
       z-index: 0;
-      filter: blur(60px) saturate(0);
+      pointer-events: none;
+    }
+
+    canvas#ambient {
+      filter: blur(60px) saturate(0.2);
+    }
+
+    canvas#grain {
+      mix-blend-mode: soft-light;
+      opacity: 0.12;
+    }
+
+    .light-overlay {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.18), transparent 45%),
+                  radial-gradient(circle at 80% 10%, rgba(180, 180, 180, 0.12), transparent 35%),
+                  radial-gradient(circle at 50% 80%, rgba(255, 255, 255, 0.1), transparent 50%);
+      mix-blend-mode: screen;
+      opacity: 0.3;
+      pointer-events: none;
+      z-index: 0;
     }
 
     .app-shell {
@@ -57,14 +87,14 @@
       z-index: 1;
       width: min(100%, var(--max-width));
       margin: 0 auto;
-      height: min(100vh, 812px);
-      border-radius: 36px;
-      background: linear-gradient(160deg, rgba(18,18,18,0.9) 0%, rgba(10,10,10,0.95) 100%);
-      border: 1px solid rgba(255,255,255,0.04);
+      height: min(100vh - clamp(24px, 5vw, 42px), 820px);
+      border-radius: clamp(24px, 6vw, 40px);
+      background: linear-gradient(180deg, rgba(12, 12, 12, 0.92) 0%, rgba(4, 4, 4, 0.96) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.04);
       box-shadow: var(--shadow);
       display: flex;
       flex-direction: column;
-      padding: calc(var(--safe-top, 12px) + 6px) 16px calc(var(--safe-bottom, 12px) + 16px);
+      padding: calc(var(--safe-top, 10px) + 10px) clamp(14px, 4vw, 18px) calc(var(--safe-bottom, 10px) + 18px);
       backdrop-filter: blur(18px) saturate(160%);
       overflow: hidden;
     }
@@ -73,10 +103,11 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.78rem;
+      font-size: 0.8rem;
       letter-spacing: 0.06em;
       color: var(--muted);
-      margin-bottom: 10px;
+      margin-bottom: 12px;
+      padding: 0 4px;
     }
 
     .status-bar svg {
@@ -85,22 +116,102 @@
       fill: var(--muted);
     }
 
-    .chat-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 14px;
+    .screen-stack {
+      position: relative;
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr;
+      overflow: hidden;
+      border-radius: clamp(20px, 5vw, 30px);
       background: var(--surface);
-      border-radius: 26px;
-      border: 1px solid rgba(255,255,255,0.03);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
     }
 
-    .contact-avatar {
-      width: 42px;
-      height: 42px;
-      border-radius: 16px;
-      background: linear-gradient(145deg, rgba(255,255,255,0.15), rgba(0,0,0,0.6));
+    .screen {
+      display: flex;
+      flex-direction: column;
+      padding: clamp(18px, 5vw, 22px);
+      gap: clamp(16px, 4vw, 20px);
+      overflow: hidden;
+      position: relative;
+      transition: opacity 0.3s ease;
+    }
+
+    .screen[hidden] {
+      display: none;
+    }
+
+    .screen-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .screen-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .screen-caption {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--muted);
+    }
+
+    .dialog-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow-y: auto;
+      padding-right: 4px;
+      scrollbar-width: none;
+    }
+
+    .dialog-list::-webkit-scrollbar {
+      display: none;
+    }
+
+    .dialog-card {
+      width: 100%;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      background: linear-gradient(155deg, rgba(255, 255, 255, 0.03) 0%, rgba(0, 0, 0, 0.4) 100%);
+      border-radius: 22px;
+      padding: 14px 16px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 14px;
+      align-items: center;
+      color: inherit;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.22s ease, border-color 0.22s ease, background 0.22s ease;
+    }
+
+    .dialog-card:focus-visible {
+      outline: 2px solid rgba(255, 255, 255, 0.18);
+      outline-offset: 3px;
+    }
+
+    .dialog-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .dialog-card.active {
+      background: linear-gradient(155deg, rgba(40, 40, 40, 0.9) 0%, rgba(0, 0, 0, 0.6) 100%);
+      border-color: rgba(255, 255, 255, 0.18);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    .dialog-avatar {
+      width: 46px;
+      height: 46px;
+      border-radius: 18px;
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(0, 0, 0, 0.6));
       display: flex;
       align-items: center;
       justify-content: center;
@@ -108,10 +219,78 @@
       overflow: hidden;
     }
 
-    .contact-avatar svg {
+    .dialog-avatar svg {
       width: 28px;
       height: 28px;
       fill: var(--accent);
+    }
+
+    .dialog-body {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      text-align: left;
+    }
+
+    .dialog-name {
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .dialog-preview {
+      font-size: 0.82rem;
+      color: var(--muted);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .dialog-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: flex-end;
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+    }
+
+    .chat-screen-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 26px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .back-button {
+      width: 38px;
+      height: 38px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.02);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.18s ease, background 0.18s ease;
+    }
+
+    .back-button svg {
+      width: 18px;
+      height: 18px;
+      fill: var(--accent);
+    }
+
+    .back-button:active,
+    .icon-button:active {
+      transform: scale(0.94);
     }
 
     .contact-info {
@@ -144,18 +323,14 @@
       width: 38px;
       height: 38px;
       border-radius: 14px;
-      border: 1px solid rgba(255,255,255,0.04);
-      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      background: rgba(255, 255, 255, 0.02);
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
       transition: transform 0.18s ease, background 0.18s ease;
-    }
-
-    .icon-button:active {
-      transform: scale(0.94);
     }
 
     .icon-button svg {
@@ -169,22 +344,24 @@
       display: flex;
       flex-direction: column;
       gap: 14px;
-      padding: 18px 4px;
+      padding: 18px 4px 18px 0;
       overflow-y: auto;
       scrollbar-width: none;
     }
 
-    .chat-body::-webkit-scrollbar { display: none; }
+    .chat-body::-webkit-scrollbar {
+      display: none;
+    }
 
     .timeline {
       align-self: center;
       padding: 6px 12px;
       font-size: 0.7rem;
       letter-spacing: 0.08em;
-      background: rgba(255,255,255,0.03);
+      background: rgba(255, 255, 255, 0.03);
       border-radius: 999px;
       color: var(--muted);
-      border: 1px solid rgba(255,255,255,0.04);
+      border: 1px solid rgba(255, 255, 255, 0.04);
     }
 
     .message {
@@ -192,11 +369,11 @@
       padding: 12px 14px;
       border-radius: 20px;
       font-size: 0.95rem;
-      line-height: 1.4;
+      line-height: 1.45;
       position: relative;
       word-wrap: break-word;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.05);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
       display: flex;
       flex-direction: column;
       gap: 8px;
@@ -205,13 +382,13 @@
     .message.outgoing {
       align-self: flex-end;
       background: var(--surface-strong);
-      border: 1px solid rgba(255,255,255,0.08);
-      box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
     }
 
     .message.incoming {
       align-self: flex-start;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
     }
 
     .message .meta {
@@ -238,8 +415,8 @@
       align-items: center;
       justify-content: center;
       gap: 6px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.04);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.04);
       padding: 0 12px;
       align-self: flex-start;
     }
@@ -248,16 +425,27 @@
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.3);
+      background: rgba(255, 255, 255, 0.3);
       animation: pulse 1.2s infinite ease-in-out;
     }
 
-    .typing-indicator span:nth-child(2) { animation-delay: 0.15s; }
-    .typing-indicator span:nth-child(3) { animation-delay: 0.3s; }
+    .typing-indicator span:nth-child(2) {
+      animation-delay: 0.15s;
+    }
+
+    .typing-indicator span:nth-child(3) {
+      animation-delay: 0.3s;
+    }
 
     @keyframes pulse {
-      0%, 100% { opacity: 0.3; transform: translateY(0); }
-      50% { opacity: 1; transform: translateY(-2px); }
+      0%, 100% {
+        opacity: 0.3;
+        transform: translateY(0);
+      }
+      50% {
+        opacity: 1;
+        transform: translateY(-2px);
+      }
     }
 
     .composer {
@@ -267,9 +455,9 @@
       margin-top: 4px;
       padding: 14px 16px;
       border-radius: 28px;
-      background: var(--surface);
-      border: 1px solid rgba(255,255,255,0.04);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
     }
 
     .composer textarea {
@@ -288,14 +476,16 @@
       scrollbar-width: none;
     }
 
-    .composer textarea::-webkit-scrollbar { display: none; }
+    .composer textarea::-webkit-scrollbar {
+      display: none;
+    }
 
     .composer .send {
       width: 46px;
       height: 46px;
       border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.06);
-      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.08);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -304,12 +494,14 @@
       -webkit-tap-highlight-color: transparent;
     }
 
-    .composer .send:active { transform: scale(0.95); }
-
     .composer .send svg {
       width: 22px;
       height: 22px;
       fill: var(--bg);
+    }
+
+    .composer .send:active {
+      transform: scale(0.95);
     }
 
     .toast {
@@ -317,8 +509,8 @@
       left: 50%;
       bottom: calc(18px + var(--safe-bottom, 10px));
       transform: translate(-50%, 80px);
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.05);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.05);
       border-radius: 24px;
       padding: 12px 20px;
       font-size: 0.8rem;
@@ -329,78 +521,174 @@
       pointer-events: none;
     }
 
-    @media (max-width: 460px) {
-      body { padding: 16px; }
-      .app-shell { border-radius: 24px; }
+    .screen-stack.show-chat .dialog-screen {
+      opacity: 0;
+    }
+
+    .screen-stack.show-chat .chat-screen {
+      opacity: 1;
+    }
+
+    .screen-stack:not(.show-chat) .chat-screen {
+      opacity: 0;
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 12px;
+      }
+
+      .chat-body {
+        padding-right: 0;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
     }
   </style>
 </head>
 <body>
   <canvas id="ambient"></canvas>
+  <canvas id="grain"></canvas>
+  <div class="light-overlay" aria-hidden="true"></div>
   <div class="app-shell">
     <div class="status-bar">
       <span id="statusTime">09:41</span>
-      <div class="status-icons">
-        <svg viewBox="0 0 24 24"><path d="M4 7h16v10H4z" fill="none"/><path d="M20 7H4v10h16V7zm-2 8H6V9h12v6zM5 5h14V3H5v2z"/></svg>
+      <div class="status-icons" aria-hidden="true">
+        <svg viewBox="0 0 24 24" role="img" aria-label="Сигнал"><path d="M2 18h2a16 16 0 0116-16V0A18 18 0 002 18zm4 0h2a10 10 0 0110-10V6A12 12 0 006 18zm4 0h2a4 4 0 014-4v-2a6 6 0 00-6 6zm4 .5a1.5 1.5 0 103 0 1.5 1.5 0 00-3 0z"/></svg>
+        <svg viewBox="0 0 24 24" role="img" aria-label="Wi-Fi"><path d="M12 18.26l-1.47-1.32a2 2 0 012.94 0zm6.53-5.06A11.94 11.94 0 0012 10a11.94 11.94 0 00-6.53 3.2l-1.42-1.42A13.94 13.94 0 0112 8a13.94 13.94 0 017.95 3.78zm3.35-3.35A18.88 18.88 0 0012 6a18.88 18.88 0 00-9.88 3.85L.7 8.43A20.88 20.88 0 0112 4a20.88 20.88 0 0111.3 4.43z"/></svg>
+        <svg viewBox="0 0 24 24" role="img" aria-label="Батарея"><path d="M7 6h11a2 2 0 012 2v8a2 2 0 01-2 2H7a2 2 0 01-2-2V8a2 2 0 012-2zm0 2v8h11V8zM2 10h2v4H2z"/></svg>
       </div>
     </div>
 
-    <header class="chat-header">
-      <div class="contact-avatar">
-        <svg viewBox="0 0 24 24"><path d="M12 2a6 6 0 016 6 6 6 0 01-6 6 6 6 0 01-6-6 6 6 0 016-6zm0 14c4.42 0 8 2.24 8 5v1H4v-1c0-2.76 3.58-5 8-5z"/></svg>
-      </div>
-      <div class="contact-info">
-        <span class="contact-name">Набор протоколов</span>
-        <span class="contact-status">Подключен • шифрование GitHub SSH</span>
-      </div>
-      <div class="header-actions">
-        <div class="icon-button" id="searchBtn" title="Поиск">
-          <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6 6 0 10-.71.71l.27.28v.79l5 5 1.5-1.5-5-5zm-5.5 0a4 4 0 110-8 4 4 0 010 8z"/></svg>
-        </div>
-        <div class="icon-button" id="callBtn" title="Звонок">
-          <svg viewBox="0 0 24 24"><path d="M6.54 5a13.333 13.333 0 006.93 6.93l2.31-2.31a1 1 0 011.04-.24 11.57 11.57 0 003.62.58 1 1 0 011 1V18a1 1 0 01-1 1A16.5 16.5 0 013 2a1 1 0 011-1h4.75a1 1 0 011 1 11.57 11.57 0 00.58 3.62 1 1 0 01-.24 1.04L6.54 5z"/></svg>
-        </div>
-      </div>
-    </header>
+    <div class="screen-stack" id="screenStack">
+      <section class="screen dialog-screen" id="dialogScreen">
+        <header class="screen-header">
+          <div>
+            <div class="screen-caption">шифрованные узлы</div>
+            <h1 class="screen-title">Диалоги</h1>
+          </div>
+          <button class="icon-button" id="newThread" type="button" title="Новый узел">
+            <svg viewBox="0 0 24 24"><path d="M19 11H13V5h-2v6H5v2h6v6h2v-6h6z"/></svg>
+          </button>
+        </header>
+        <div class="dialog-list" id="dialogList" role="listbox" aria-label="Список диалогов"></div>
+      </section>
 
-    <div class="chat-body" id="chatBody" role="log" aria-live="polite">
-      <span class="timeline">сегодня</span>
-      <article class="message incoming" data-id="m1">
-        <p>Добро пожаловать в тестовый узел. Сообщения шифруются и воспроизводятся в реальном времени.</p>
-        <div class="meta"><span>08:58</span><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1010 10A10 10 0 0012 2zm1 11h-2V7h2zm0 4h-2v-2h2z"/></svg></div>
-      </article>
-      <article class="message outgoing" data-id="m2">
-        <p>Я запускаю имитацию клиента. Данные синхронизированы с облаком.</p>
-        <div class="meta"><span>09:12</span><svg viewBox="0 0 24 24"><path d="M21 7l-9 10-5-5 1.41-1.42L12 14.17 19.59 6.6z"/></svg></div>
-      </article>
-      <article class="message incoming" data-id="m3">
-        <p>Подтверждаю соединение. Используйте команду /sync для проверки состояния.</p>
-        <div class="meta"><span>09:15</span><svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 018 8h2l-3 4-3-4h2a6 6 0 10-6 6 5.93 5.93 0 003.9-1.44l1.45 1.44A7.94 7.94 0 0112 20a8 8 0 010-16z"/></svg></div>
-      </article>
-      <div class="typing-indicator" id="typingIndicator" hidden>
-        <span></span><span></span><span></span>
-      </div>
+      <section class="screen chat-screen" id="chatScreen" aria-hidden="true" hidden>
+        <header class="chat-screen-header">
+          <button class="back-button" id="backBtn" type="button" title="К списку">
+            <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+          </button>
+          <div class="dialog-avatar" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 2a6 6 0 016 6 6 6 0 01-6 6 6 6 0 01-6-6 6 6 0 016-6zm0 14c4.42 0 8 2.24 8 5v1H4v-1c0-2.76 3.58-5 8-5z"/></svg>
+          </div>
+          <div class="contact-info">
+            <span class="contact-name" id="contactName">Набор протоколов</span>
+            <span class="contact-status" id="contactStatus">Подключен • шифрование GitHub SSH</span>
+          </div>
+          <div class="header-actions">
+            <button class="icon-button" id="searchBtn" type="button" title="Поиск">
+              <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6 6 0 10-.71.71l.27.28v.79l5 5 1.5-1.5-5-5zm-5.5 0a4 4 0 110-8 4 4 0 010 8z"/></svg>
+            </button>
+            <button class="icon-button" id="callBtn" type="button" title="Звонок">
+              <svg viewBox="0 0 24 24"><path d="M6.54 5a13.333 13.333 0 006.93 6.93l2.31-2.31a1 1 0 011.04-.24 11.57 11.57 0 003.62.58 1 1 0 011 1V18a1 1 0 01-1 1A16.5 16.5 0 013 2a1 1 0 011-1h4.75a1 1 0 011 1 11.57 11.57 0 00.58 3.62 1 1 0 01-.24 1.04L6.54 5z"/></svg>
+            </button>
+          </div>
+        </header>
+
+        <div class="chat-body" id="chatBody" role="log" aria-live="polite"></div>
+        <div class="typing-indicator" id="typingIndicator" hidden>
+          <span></span><span></span><span></span>
+        </div>
+
+        <form class="composer" id="composer" autocomplete="off">
+          <textarea id="composerInput" rows="1" placeholder="Отправить защищённый сигнал…" aria-label="Введите сообщение"></textarea>
+          <button class="send" id="sendBtn" type="submit" title="Отправить">
+            <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+          </button>
+        </form>
+      </section>
     </div>
-
-    <form class="composer" id="composer" autocomplete="off">
-      <textarea id="composerInput" rows="1" placeholder="Отправить защищённый сигнал…" aria-label="Введите сообщение"></textarea>
-      <button class="send" id="sendBtn" type="submit" title="Отправить">
-        <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
-      </button>
-    </form>
     <div class="toast" id="toast" role="status" aria-live="assertive"></div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js" integrity="sha384-ArNjA4VPS36FJOLwObAun1vDLteA94ppIqhzyapMI2vlA38nSxrdbidKdvUSsfx8" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@motionone/dom/dist/motion.min.js" crossorigin="anonymous"></script>
   <script>
     const statusTime = document.getElementById('statusTime');
+    const screenStack = document.getElementById('screenStack');
+    const dialogList = document.getElementById('dialogList');
+    const dialogScreen = document.getElementById('dialogScreen');
+    const chatScreen = document.getElementById('chatScreen');
+    const contactName = document.getElementById('contactName');
+    const contactStatus = document.getElementById('contactStatus');
     const chatBody = document.getElementById('chatBody');
     const composer = document.getElementById('composer');
     const composerInput = document.getElementById('composerInput');
     const typingIndicator = document.getElementById('typingIndicator');
     const toast = document.getElementById('toast');
     const ambient = document.getElementById('ambient');
-    const ctx = ambient.getContext('2d');
+    const grain = document.getElementById('grain');
+    const ambientCtx = ambient.getContext('2d');
+    const grainCtx = grain.getContext('2d');
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const threads = [
+      {
+        id: 'protocols',
+        name: 'Набор протоколов',
+        status: 'Подключен • шифрование GitHub SSH',
+        preview: 'Добро пожаловать в тестовый узел. Сообщения шифруются и воспроизводятся в реальном времени.',
+        unread: 2,
+        updatedAt: '09:41',
+        messages: [
+          { role: 'incoming', text: 'Добро пожаловать в тестовый узел. Сообщения шифруются и воспроизводятся в реальном времени.', time: '08:58', icon: 'alert' },
+          { role: 'outgoing', text: 'Я запускаю имитацию клиента. Данные синхронизированы с облаком.', time: '09:12', icon: 'check' },
+          { role: 'incoming', text: 'Подтверждаю соединение. Используйте команду /sync для проверки состояния.', time: '09:15', icon: 'loop' }
+        ]
+      },
+      {
+        id: 'sandbox',
+        name: 'Песочница Motion',
+        status: 'Сеанс • Motion One + AnimeJS',
+        preview: 'Обновление визуального слоя: активированы переходы и эхо-ответы.',
+        unread: 0,
+        updatedAt: '09:24',
+        messages: [
+          { role: 'incoming', text: 'Лаборатория готова. Можем тестировать переходы между экранами.', time: '09:00', icon: 'alert' },
+          { role: 'outgoing', text: 'Переключаюсь на список диалогов. Подготовка завершена.', time: '09:18', icon: 'check' }
+        ]
+      },
+      {
+        id: 'telemetry',
+        name: 'Телеметрия',
+        status: 'Пассивный мониторинг • offline cache',
+        preview: 'Автономный логгер в режиме ожидания. Запросите /export для отчёта.',
+        unread: 5,
+        updatedAt: '08:47',
+        messages: [
+          { role: 'incoming', text: 'Канал связи перешёл в автономный режим. Буфер наполняется локально.', time: '08:20', icon: 'alert' },
+          { role: 'incoming', text: 'Событие: 5 новых пакетов. /export — для принудительной выгрузки.', time: '08:47', icon: 'loop' }
+        ]
+      }
+    ];
+
+    const icons = {
+      alert: 'M12 2a10 10 0 1010 10A10 10 0 0012 2zm1 11h-2V7h2zm0 4h-2v-2h2z',
+      check: 'M21 7l-9 10-5-5 1.41-1.42L12 14.17 19.59 6.6z',
+      loop: 'M12 4a8 8 0 018 8h2l-3 4-3-4h2a6 6 0 10-6 6 5.93 5.93 0 003.9-1.44l1.45 1.44A7.94 7.94 0 0112 20a8 8 0 010-16z'
+    };
+
+    const activeState = {
+      thread: null
+    };
 
     function updateClock() {
       const now = new Date();
@@ -408,27 +696,31 @@
       const m = String(now.getMinutes()).padStart(2, '0');
       statusTime.textContent = `${h}:${m}`;
     }
+
     updateClock();
     setInterval(updateClock, 30000);
 
     function resizeCanvas() {
       ambient.width = window.innerWidth * 2;
       ambient.height = window.innerHeight * 2;
+      grain.width = window.innerWidth;
+      grain.height = window.innerHeight;
     }
+
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas, { passive: true });
 
     const gradientNodes = Array.from({ length: 5 }).map((_, i) => ({
       x: Math.random(),
       y: Math.random(),
-      r: 120 + Math.random() * 120,
+      r: 120 + Math.random() * 140,
       dx: (Math.random() - 0.5) * 0.0012,
       dy: (Math.random() - 0.5) * 0.0012,
       alpha: 0.12 + i * 0.03
     }));
 
     function renderGradient() {
-      ctx.clearRect(0, 0, ambient.width, ambient.height);
+      ambientCtx.clearRect(0, 0, ambient.width, ambient.height);
       gradientNodes.forEach(node => {
         node.x += node.dx;
         node.y += node.dy;
@@ -436,67 +728,83 @@
         if (node.y < 0 || node.y > 1) node.dy *= -1;
         const gx = node.x * ambient.width;
         const gy = node.y * ambient.height;
-        const gradient = ctx.createRadialGradient(gx, gy, node.r * 0.25, gx, gy, node.r);
-        gradient.addColorStop(0, `rgba(255,255,255,${node.alpha})`);
-        gradient.addColorStop(1, 'rgba(10,10,10,0)');
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(gx, gy, node.r, 0, Math.PI * 2);
-        ctx.fill();
+        const gradient = ambientCtx.createRadialGradient(gx, gy, 0, gx, gy, node.r * 4);
+        gradient.addColorStop(0, `rgba(255, 255, 255, ${node.alpha})`);
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ambientCtx.fillStyle = gradient;
+        ambientCtx.beginPath();
+        ambientCtx.arc(gx, gy, node.r * 4, 0, Math.PI * 2);
+        ambientCtx.fill();
       });
       requestAnimationFrame(renderGradient);
     }
+
+    function renderNoise() {
+      grainCtx.clearRect(0, 0, grain.width, grain.height);
+      const imageData = grainCtx.createImageData(grain.width, grain.height);
+      const buffer = new Uint32Array(imageData.data.buffer);
+      for (let i = 0; i < buffer.length; i++) {
+        const shade = Math.random() * 255 | 0;
+        buffer[i] = (255 << 24) | (shade << 16) | (shade << 8) | shade;
+      }
+      grainCtx.putImageData(imageData, 0, 0);
+      requestAnimationFrame(renderNoise);
+    }
+
     renderGradient();
+    renderNoise();
 
     function showToast(message) {
       toast.textContent = message;
       anime.remove(toast);
+      const duration = prefersReducedMotion ? 0 : 420;
       anime({
         targets: toast,
         opacity: [0, 1],
         translateY: [80, 0],
-        duration: 420,
+        duration,
         easing: 'easeOutCubic'
-      }).finished.then(() => {
-        return new Promise(resolve => setTimeout(resolve, 1200));
-      }).then(() => {
+      }).finished.then(() => new Promise(resolve => setTimeout(resolve, 1200))).then(() => {
         anime({
           targets: toast,
           opacity: [1, 0],
           translateY: [0, 80],
-          duration: 360,
+          duration: prefersReducedMotion ? 0 : 360,
           easing: 'easeInCubic'
         });
       });
     }
 
     function scrollToBottom() {
-      chatBody.scrollTo({ top: chatBody.scrollHeight, behavior: 'smooth' });
+      chatBody.scrollTo({ top: chatBody.scrollHeight, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
     }
 
-    function createMessage(text, role) {
+    function createMessage({ text, role, time, icon }) {
       const article = document.createElement('article');
       article.className = `message ${role}`;
       const content = document.createElement('p');
       content.textContent = text;
       const meta = document.createElement('div');
       meta.className = 'meta';
-      const now = new Date();
-      const time = document.createElement('span');
-      time.textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      icon.setAttribute('viewBox', '0 0 24 24');
+      const timeNode = document.createElement('span');
+      timeNode.textContent = time;
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 24 24');
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('d', role === 'outgoing' ? 'M21 7l-9 10-5-5 1.41-1.42L12 14.17 19.59 6.6z' : 'M12 2a10 10 0 1010 10A10 10 0 0012 2zm1 11h-2V7h2zm0 4h-2v-2h2z');
-      icon.appendChild(path);
-      meta.appendChild(time);
-      meta.appendChild(icon);
+      path.setAttribute('d', icons[icon] || icons.alert);
+      svg.appendChild(path);
+      meta.appendChild(timeNode);
+      meta.appendChild(svg);
       article.appendChild(content);
       article.appendChild(meta);
       return article;
     }
 
     function animateMessage(element) {
+      if (prefersReducedMotion) {
+        element.style.opacity = 1;
+        return;
+      }
       element.style.opacity = 0;
       anime({
         targets: element,
@@ -507,23 +815,144 @@
       });
     }
 
-    function simulateIncoming() {
+    function renderThread(thread) {
+      chatBody.innerHTML = '';
+      chatBody.setAttribute('data-thread', thread.id);
+      const fragment = document.createDocumentFragment();
+      thread.messages.forEach(message => {
+        const element = createMessage(message);
+        fragment.appendChild(element);
+      });
+      chatBody.appendChild(fragment);
+      const timeline = document.createElement('span');
+      timeline.className = 'timeline';
+      timeline.textContent = 'сегодня';
+      chatBody.insertBefore(timeline, chatBody.firstChild);
+      chatBody.appendChild(typingIndicator);
+      typingIndicator.hidden = true;
+      requestAnimationFrame(() => {
+        if (!prefersReducedMotion) {
+          anime({
+            targets: chatBody.querySelectorAll('.message'),
+            opacity: [0, 1],
+            translateY: [12, 0],
+            delay: anime.stagger(70),
+            duration: 360,
+            easing: 'easeOutCubic'
+          });
+        }
+      });
+      scrollToBottom();
+    }
+
+    function selectThread(threadId, animate = true, reveal = true) {
+      const thread = threads.find(item => item.id === threadId);
+      if (!thread) return;
+      activeState.thread = thread;
+      dialogList.querySelectorAll('.dialog-card').forEach(card => {
+        card.classList.toggle('active', card.dataset.threadId === threadId);
+        card.setAttribute('aria-selected', card.dataset.threadId === threadId ? 'true' : 'false');
+      });
+      contactName.textContent = thread.name;
+      contactStatus.textContent = thread.status;
+      renderThread(thread);
+      const isCompact = window.matchMedia('(max-width: 640px)').matches;
+      const shouldReveal = reveal || !isCompact;
+      if (shouldReveal) {
+        chatScreen.hidden = false;
+        chatScreen.setAttribute('aria-hidden', 'false');
+        screenStack.classList.add('show-chat');
+        if (isCompact && animate && window.motion && !prefersReducedMotion) {
+          const { animate: motionAnimate } = window.motion;
+          motionAnimate(chatScreen, { opacity: [0, 1], transform: ['translateX(8px)', 'translateX(0)'] }, { duration: 0.38, easing: 'ease-out' });
+        }
+      } else {
+        screenStack.classList.remove('show-chat');
+        chatScreen.setAttribute('aria-hidden', 'true');
+        chatScreen.hidden = true;
+      }
+      if (animate && window.motion && !prefersReducedMotion && shouldReveal) {
+        const { animate: motionAnimate, stagger } = window.motion;
+        motionAnimate(chatBody.querySelectorAll('.message'), { opacity: [0, 1], transform: ['translateY(16px)', 'translateY(0)'] }, { duration: 0.45, delay: stagger(0.06), easing: 'ease-out' });
+      }
+    }
+
+    function goBackToList() {
+      if (window.matchMedia('(max-width: 640px)').matches) {
+        screenStack.classList.remove('show-chat');
+        chatScreen.setAttribute('aria-hidden', 'true');
+        if (!prefersReducedMotion) {
+          const { animate: motionAnimate } = window.motion || {};
+          motionAnimate?.(chatScreen, { opacity: [1, 0], transform: ['translateX(0)', 'translateX(12px)'] }, { duration: 0.3, easing: 'ease-in' });
+        }
+        setTimeout(() => {
+          if (!screenStack.classList.contains('show-chat')) {
+            chatScreen.hidden = true;
+          }
+        }, prefersReducedMotion ? 0 : 260);
+      }
+    }
+
+    function renderDialogList() {
+      dialogList.innerHTML = '';
+      threads.forEach((thread, index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'dialog-card';
+        button.dataset.threadId = thread.id;
+        button.setAttribute('role', 'option');
+        button.innerHTML = `
+          <span class="dialog-avatar" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 2a6 6 0 016 6 6 6 0 01-6 6 6 6 0 01-6-6 6 6 0 016-6zm0 14c4.42 0 8 2.24 8 5v1H4v-1c0-2.76 3.58-5 8-5z"/></svg>
+          </span>
+          <span class="dialog-body">
+            <span class="dialog-name">${thread.name}</span>
+            <span class="dialog-preview">${thread.preview}</span>
+          </span>
+          <span class="dialog-meta">
+            <span>${thread.updatedAt}</span>
+            ${thread.unread ? `<span aria-label="${thread.unread} непрочитанных">${thread.unread} •</span>` : ''}
+          </span>
+        `;
+        button.addEventListener('click', () => selectThread(thread.id));
+        dialogList.appendChild(button);
+        if (!prefersReducedMotion && window.motion) {
+          const { animate: motionAnimate } = window.motion;
+          motionAnimate(button, { opacity: [0, 1], transform: ['translateY(24px)', 'translateY(0)'] }, { duration: 0.45, easing: 'ease-out', delay: index * 0.06 });
+        }
+      });
+    }
+
+    renderDialogList();
+    selectThread(threads[0].id, false, false);
+
+    document.getElementById('backBtn').addEventListener('click', goBackToList);
+
+    function simulateIncoming(originText) {
+      if (!chatBody.contains(typingIndicator)) {
+        chatBody.appendChild(typingIndicator);
+      }
       typingIndicator.hidden = false;
-      anime({ targets: typingIndicator, opacity: [0, 1], duration: 240, easing: 'linear' });
+      if (!prefersReducedMotion) {
+        anime({ targets: typingIndicator, opacity: [0, 1], duration: 240, easing: 'linear' });
+      } else {
+        typingIndicator.style.opacity = 1;
+      }
       const replies = [
         'Сеанс подтверждён. Логирование событий отключено.',
         'Режим без обновлений активен. Запросы идут через Motion Channel.',
         'Статус: online. Используйте /export для выгрузки переписки.',
         'Шум подавлен. Канал готов к синхронизации commit-пакетов.'
       ];
-      const reply = replies[Math.floor(Math.random() * replies.length)];
+      const echo = originText ? `Эхо: «${originText.replace(/\s+/g, ' ').trim()}» доставлено.` : replies[Math.floor(Math.random() * replies.length)];
+      const reply = { role: 'incoming', text: echo, time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }), icon: 'loop' };
       setTimeout(() => {
         typingIndicator.hidden = true;
-        const message = createMessage(reply, 'incoming');
-        chatBody.appendChild(message);
-        animateMessage(message);
+        const element = createMessage(reply);
+        chatBody.insertBefore(element, typingIndicator);
+        animateMessage(element);
         scrollToBottom();
-      }, 1100 + Math.random() * 900);
+      }, prefersReducedMotion ? 200 : 1100 + Math.random() * 900);
     }
 
     composer.addEventListener('submit', event => {
@@ -533,18 +962,29 @@
         showToast('Пустые сигналы не отправляются');
         return;
       }
-      const message = createMessage(text, 'outgoing');
-      chatBody.appendChild(message);
+      const now = new Date();
+      const outgoing = {
+        role: 'outgoing',
+        text,
+        time: now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+        icon: 'check'
+      };
+      const element = createMessage(outgoing);
+      chatBody.insertBefore(element, typingIndicator);
       composerInput.value = '';
       composerInput.style.height = 'auto';
-      animateMessage(message);
+      animateMessage(element);
       scrollToBottom();
-      simulateIncoming();
+      simulateIncoming(text);
     });
 
     composerInput.addEventListener('input', () => {
       composerInput.style.height = 'auto';
       composerInput.style.height = composerInput.scrollHeight + 'px';
+    });
+
+    document.getElementById('newThread').addEventListener('click', () => {
+      showToast('Создание новых узлов временно отключено');
     });
 
     function blockRefresh(event) {
@@ -553,14 +993,21 @@
         showToast('Обновление отключено');
       }
     }
+
     window.addEventListener('keydown', blockRefresh, { passive: false });
     window.addEventListener('beforeunload', event => {
       event.preventDefault();
       event.returnValue = '';
     });
 
+    if (!prefersReducedMotion && window.motion) {
+      const { animate: motionAnimate, stagger } = window.motion;
+      motionAnimate('.screen-stack', { opacity: [0, 1], transform: ['translateY(18px)', 'translateY(0)'] }, { duration: 0.5, easing: 'ease-out' });
+      motionAnimate('.light-overlay', { opacity: [0, 0.3] }, { duration: 1.2, easing: 'ease-out' });
+      motionAnimate('.dialog-card', { opacity: [0, 1], transform: ['translateY(24px)', 'translateY(0)'] }, { duration: 0.45, easing: 'ease-out', delay: stagger(0.06) });
+    }
+
     showToast('Мессенджер готов к передаче');
-    scrollToBottom();
   </script>
 </body>
 </html>

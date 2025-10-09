@@ -1,182 +1,145 @@
-<!DOCTYPE html>  
-<html lang="ru">  
-<head>  
-<meta charset="utf-8">  
-<title>Минималистичный редактор</title>  
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">  
-<style>  
-:root {  
-  --bg: #111;  
-  --fg: #eee;  
-  --accent: #0077ff;  
-  --border: #222;  
-  --radius: .4rem;  
-  --tab-h: 50px;  
-  --fab: 52px;  
-  --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;  
-}  
-* { box-sizing:border-box; }  
-*:focus { outline: none !important; box-shadow:none !important; }  
-  
-body, html {  
-  height: 100%; margin: 0;  
-  font-family: var(--font);  
-  background: var(--bg);  
-  color: var(--fg);  
-  display: flex; flex-direction: column;  
-  overscroll-behavior: none;  
-}  
-.window { flex: 1; display: flex; }  
-textarea {  
-  flex: 1; border: none; outline: none;  
-  padding: 1rem;  
-  font-family: monospace;  
-  font-size: .9rem;  
-  background: var(--bg);  
-  color: var(--fg);  
-  resize: none;  
-  -webkit-user-modify: read-write-plaintext-only;  
-}  
-  
-.fab {  
-  position: fixed; bottom: 16px;  
-  width: var(--fab); height: var(--fab);  
-  border-radius: 50%;   
-  display: flex; align-items: center; justify-content: center;  
-  background: var(--accent);  
-  cursor: pointer;  
-  transition: background .2s, transform .1s;  
-  user-select: none;  
-  -webkit-tap-highlight-color: transparent;  
-}  
-.fab:active { transform: scale(0.92); }  
-.fab svg { width: 26px; height: 26px; fill: #fff; }  
-.fab:hover { background: #005ed1; }  
-#copyBtn { right: calc(16px + var(--fab) + 12px); background:#444; }  
-#pasteBtn { right: calc(16px + (var(--fab) + 12px) * 2); background:#444; }  
-#selectAllBtn { right: calc(16px + (var(--fab) + 12px) * 3); background:#444; }  
-#runBtn { right: 16px; }  
-  
-.topbar {  
-  height: var(--tab-h);  
-  display: flex; align-items: center; justify-content: center;  
-  background: #181818;  
-  border-bottom: 1px solid var(--border);  
-  font-size: .8rem;  
-  position: relative;  
-}  
-.topbar .title { color: var(--accent); font-weight: 600; }  
-#menuBtn {  
-  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);  
-  width: 36px; height: 36px; display:flex; align-items:center; justify-content:center;  
-  cursor: pointer;  
-  -webkit-tap-highlight-color: transparent;  
-}  
-#menuBtn svg { width: 26px; height: 26px; fill: var(--fg); }  
-  
-.notice {  
-  position: fixed; top: calc(var(--tab-h) + 10px); right: 20px;  
-  background: #222; color: #fff;  
-  padding: .5rem .8rem; border-radius: var(--radius);  
-  font-size: .8rem; opacity: 0; transition: opacity .3s, transform .3s;  
-  transform: translateY(-10px);  
-}  
-.notice.show { opacity: 1; transform: translateY(0); }  
-</style>  
-</head>  
-<body>  
-  
-<div class="topbar">  
-  <div id="menuBtn" title="Меню" role="button" tabindex="-1">  
-    <!-- иконка меню -->  
-    <svg viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg>  
-  </div>  
-  <div class="title">Редактор</div>  
-</div>  
-  
-<section id="codeWin" class="window">  
-  <textarea id="code" spellcheck="false"><!DOCTYPE html>  
-<html lang="ru">  
-<head>  
-  <meta charset="utf-8">  
-  <title>Demo</title>  
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">  
-  <style>  
-    body { margin: 2rem; font-family: system-ui; background:#111; color:#eee; }  
-    h1 { color:#0077ff; }  
-  </style>  
-</head>  
-<body>  
-  <h1>Привет, мир!</h1>  
-  <p>Это минималистичный предпросмотр.</p>  
-</body>  
-</html></textarea>  
-</section>  
-  
-<div class="fab" id="selectAllBtn" title="Выделить всё" role="button" tabindex="-1">  
-  <!-- иконка all -->  
-  <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4V4zm2 2v12h12V6H6z"/></svg>  
-</div>  
-  
-<div class="fab" id="pasteBtn" title="Вставить" role="button" tabindex="-1">  
-  <!-- иконка paste -->  
-  <svg viewBox="0 0 24 24"><path d="M19 2h-4.18A3 3 0 0012 0a3 3 0 00-2.82 2H5a2 2 0 00-2 2v16a2   
-  2 0 002 2h14a2 2 0 002-2V4a2 2 0 00-2-2zM12 2a1 1 0 110 2 1 1 0 010-2zM5   
-  20V4h2v3h10V4h2v16H5z"/></svg>  
-</div>  
-  
-<div class="fab" id="copyBtn" title="Копировать" role="button" tabindex="-1">  
-  <!-- иконка copy -->  
-  <svg viewBox="0 0 24 24"><path d="M16 1H4a2 2 0 00-2 2v14h2V3h12V1zm3 4H8a2 2 0 00-2 2v14a2 2 0   
-  002 2h11a2 2 0 002-2V7a2 2 0 00-2-2zm0 16H8V7h11v14z"/></svg>  
-</div>  
-  
-<div class="fab" id="runBtn" title="Запустить" role="button" tabindex="-1">  
-  <!-- иконка play -->  
-  <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>  
-</div>  
-  
-<div class="notice" id="notice"></div>  
-  
-<script>  
-const codeEl = document.getElementById('code');  
-const runBtn = document.getElementById('runBtn');  
-const copyBtn = document.getElementById('copyBtn');  
-const pasteBtn = document.getElementById('pasteBtn');  
-const selectAllBtn = document.getElementById('selectAllBtn');  
-const notice = document.getElementById('notice');  
-const menuBtn = document.getElementById('menuBtn');  
-  
-function showNotice(msg) {  
-  notice.textContent = msg;  
-  notice.classList.add('show');  
-  setTimeout(() => notice.classList.remove('show'), 1500);  
-}  
-  
-function runCode() {  
-  const blob = new Blob([codeEl.value], {type:'text/html'});  
-  window.open(URL.createObjectURL(blob), '_blank');  
-}  
-async function copyCode() {  
-  try { await navigator.clipboard.writeText(codeEl.value); showNotice("Скопировано"); }  
-  catch { showNotice("Ошибка копирования"); }  
-}  
-async function pasteCode() {  
-  try { codeEl.setRangeText(await navigator.clipboard.readText()); showNotice("Вставлено"); }  
-  catch { showNotice("Ошибка вставки"); }  
-}  
-function selectAllCode() {  
-  codeEl.setSelectionRange(0, codeEl.value.length);  
-  showNotice("Выделено");  
-}  
+<!DOCTYPE html>
+<html lang="ru" data-theme="auto">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>BBank Next</title>
+    <meta name="description" content="BBank — мобильное приложение нового поколения для управления связью и финансами." />
+    <meta name="theme-color" content="#0a84ff" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+    />
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <noscript>
+      Для работы приложения необходимо включить JavaScript. / Enable JavaScript to run this app.
+    </noscript>
+    <div id="app" class="app-shell" aria-live="polite"></div>
+    <template id="splash-template">
+      <section class="screen screen--active" data-screen="splash">
+        <div class="splash__gradient" aria-hidden="true"></div>
+        <div class="splash__content">
+          <div class="logo logo--primary">
+            <span class="logo__glow"></span>
+            <span class="logo__text">B</span>
+          </div>
+          <h1 class="splash__title">BBank</h1>
+          <p class="splash__subtitle">Банк и связь на новом уровне</p>
+          <button class="btn btn--primary" data-action="open-pin">Начать</button>
+        </div>
+      </section>
+    </template>
 
-runBtn.addEventListener('click', runCode);  
-copyBtn.addEventListener('click', copyCode);  
-pasteBtn.addEventListener('click', pasteCode);  
-selectAllBtn.addEventListener('click', selectAllCode);  
-menuBtn.addEventListener('click', () => {  
-  showNotice("Открыть меню (потом добавим боковую панель)");  
-});  
-</script>  
-</body>  
+    <template id="pin-template">
+      <section class="screen" data-screen="pin" aria-label="Авторизация по PIN">
+        <div class="pin__header">
+          <button class="btn-icon" data-action="close-pin" aria-label="Назад">
+            <span class="btn-icon__ripple"></span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" /></svg>
+          </button>
+          <p class="pin__hint">Введите ваш PIN-код</p>
+        </div>
+        <div class="pin__dots" role="group" aria-label="Ввод PIN">
+          <span class="pin__dot" data-index="0"></span>
+          <span class="pin__dot" data-index="1"></span>
+          <span class="pin__dot" data-index="2"></span>
+          <span class="pin__dot" data-index="3"></span>
+        </div>
+        <div class="pin__keypad" role="presentation"></div>
+        <div class="pin__footer" aria-live="assertive"></div>
+      </section>
+    </template>
+
+    <template id="main-template">
+      <section class="screen" data-screen="home" aria-label="Главный экран">
+        <header class="topbar">
+          <button class="btn-icon" data-action="open-settings" aria-label="Открыть профиль">
+            <span class="btn-icon__ripple"></span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4.25 4.25 0 1 0 0-8.5 4.25 4.25 0 0 0 0 8.5Zm0 2.5c-4.28 0-7.75 2.52-7.75 5.63a.87.87 0 0 0 .87.87h13.76a.87.87 0 0 0 .87-.87C19.75 17.02 16.28 14.5 12 14.5Z" fill="currentColor" /></svg>
+          </button>
+          <div class="topbar__text">
+            <p class="topbar__greeting" data-bind="greeting"></p>
+            <h2 class="topbar__name" data-bind="username"></h2>
+          </div>
+          <button class="btn-icon btn-icon--theme" data-action="toggle-theme" aria-label="Переключить тему">
+            <span class="btn-icon__ripple"></span>
+            <svg class="icon--sun" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z" fill="none" stroke="currentColor" stroke-width="1.6" /><path d="M12 1.75V4M12 20v2.25M4 12H1.75M22.25 12H20M5.76 18.24l-1.6 1.6M19.85 4.15l-1.6 1.6M5.76 5.76 4.15 4.15M19.85 19.85l-1.6-1.6" fill="none" stroke="currentColor" stroke-width="1.6" /></svg>
+            <svg class="icon--moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5A8.5 8.5 0 0 1 9.5 5c0-1.5.38-2.9 1.05-4.12A9.5 9.5 0 1 0 21.12 13.95 8.47 8.47 0 0 1 20 15.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          </button>
+        </header>
+        <main class="main" data-bind="home-content"></main>
+        <nav class="navbar" role="navigation" aria-label="Главная навигация">
+          <button class="nav-item nav-item--active" data-action="nav-home">
+            <span class="nav-item__icon"> <img src="/assets/icons/home.svg" alt="" loading="lazy" /> </span>
+            <span class="nav-item__label">Главная</span>
+          </button>
+          <button class="nav-item" data-action="nav-payments">
+            <span class="nav-item__icon"> <img src="/assets/icons/payments.svg" alt="" loading="lazy" /> </span>
+            <span class="nav-item__label">Платежи</span>
+          </button>
+          <button class="nav-item" data-action="nav-cards">
+            <span class="nav-item__icon"> <img src="/assets/icons/cards.svg" alt="" loading="lazy" /> </span>
+            <span class="nav-item__label">Карты</span>
+          </button>
+          <button class="nav-item" data-action="nav-settings">
+            <span class="nav-item__icon"> <img src="/assets/icons/settings.svg" alt="" loading="lazy" /> </span>
+            <span class="nav-item__label">Настройки</span>
+          </button>
+        </nav>
+      </section>
+    </template>
+
+    <template id="settings-template">
+      <section class="screen" data-screen="settings" aria-label="Настройки">
+        <header class="sheet-header">
+          <button class="btn-icon" data-action="close-settings" aria-label="Назад">
+            <span class="btn-icon__ripple"></span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" /></svg>
+          </button>
+          <h2 class="sheet-header__title">Настройки</h2>
+        </header>
+        <div class="settings">
+          <div class="settings__group">
+            <label class="settings__label" for="display-name">Имя</label>
+            <input id="display-name" class="field" type="text" autocomplete="name" data-bind="input-name" />
+          </div>
+          <div class="settings__group">
+            <label class="settings__label" for="pin-code">PIN-код</label>
+            <button class="btn btn--surface" data-action="change-pin">Изменить PIN</button>
+          </div>
+          <div class="settings__group settings__group--row">
+            <span class="settings__label">Тема</span>
+            <button class="chip" data-action="set-theme-light">Светлая</button>
+            <button class="chip" data-action="set-theme-dark">Тёмная</button>
+            <button class="chip" data-action="set-theme-auto">Авто</button>
+          </div>
+          <div class="settings__group settings__group--row">
+            <span class="settings__label">Язык</span>
+            <button class="chip" data-action="set-lang-ru">RU</button>
+            <button class="chip" data-action="set-lang-en">EN</button>
+          </div>
+          <button class="btn btn--danger" data-action="logout">Выход</button>
+        </div>
+      </section>
+    </template>
+
+    <template id="toast-template">
+      <div class="toast" role="status">
+        <span class="toast__icon" aria-hidden="true"></span>
+        <span class="toast__message"></span>
+      </div>
+    </template>
+
+    <div id="toast-root" class="toast-container" aria-live="assertive"></div>
+
+    <script type="module" src="/js/app.js"></script>
+  </body>
 </html>

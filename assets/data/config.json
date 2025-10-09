@@ -1,0 +1,41 @@
+{
+  "user": {
+    "name": "Алексей",
+    "pin": "1234",
+    "language": "ru"
+  },
+  "balance": {
+    "amount": 267345.0,
+    "currency": "₽"
+  },
+  "allowances": {
+    "data": {
+      "used": 21.3,
+      "total": 30
+    },
+    "calls": {
+      "used": 600,
+      "total": 600
+    }
+  },
+  "tariffs": [
+    {
+      "id": "internet",
+      "name": "Вместе Дешевле 1.1",
+      "description": "30 ГБ трафика, мессенджеры безлимит",
+      "addons": [
+        { "id": "5gb", "label": "Купить 5 ГБ", "amount": 299 },
+        { "id": "1gb", "label": "Купить 1 ГБ", "amount": 99 }
+      ]
+    },
+    {
+      "id": "calls",
+      "name": "Вместе Дешевле 1.1",
+      "description": "Безлимит внутри сети, 600 мин на другие",
+      "addons": [
+        { "id": "100min", "label": "Купить 100 минут", "amount": 259 },
+        { "id": "50min", "label": "Купить 50 минут", "amount": 149 }
+      ]
+    }
+  ]
+}

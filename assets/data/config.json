@@ -1,0 +1,30 @@
+{
+  "user": {
+    "name": "Алексей",
+    "balance": 267345,
+    "currency": "₽",
+    "language": "ru"
+  },
+  "plans": {
+    "data": {
+      "title": "Интернет",
+      "planName": "Вместе Дешевле 1.1",
+      "used": 21.3,
+      "total": 30,
+      "actions": [
+        { "label": "Купить 5 ГБ", "amount": 5 },
+        { "label": "Купить 1 ГБ", "amount": 1 }
+      ]
+    },
+    "calls": {
+      "title": "Звонки",
+      "planName": "Вместе Дешевле 1.1",
+      "used": 600,
+      "total": 600,
+      "actions": [
+        { "label": "Купить 100 минут", "amount": 100 },
+        { "label": "Купить 50 минут", "amount": 50 }
+      ]
+    }
+  }
+}
